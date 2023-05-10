@@ -12,6 +12,7 @@
  * Waiting for completion is a typically sync point, but not an exclusion point.
  */
 #include "sched.h"
+#include <asm/host_ops.h>
 
 /**
  * complete: - signals a single thread waiting on this completion
@@ -29,6 +30,12 @@ void complete(struct completion *x)
 {
 	unsigned long flags;
 
+   if(lkl_ops->fuzz_ops->apply_patch_2()) {
+      if(x==NULL) {
+         pr_err("%s WARNING zero completion\n", __FUNCTION__);
+         return;
+      }
+   }
 	raw_spin_lock_irqsave(&x->wait.lock, flags);
 
 	if (x->done != UINT_MAX)
@@ -114,13 +121,13 @@ __wait_for_common(struct completion *x,
 static long __sched
 wait_for_common(struct completion *x, long timeout, int state)
 {
-	return __wait_for_common(x, schedule_timeout, timeout, state);
+	return __wait_for_common(x, schedule_timeout_nofuzz, timeout, state);
 }
 
 static long __sched
 wait_for_common_io(struct completion *x, long timeout, int state)
 {
-	return __wait_for_common(x, io_schedule_timeout, timeout, state);
+	return __wait_for_common(x, io_schedule_timeout_nofuzz, timeout, state);
 }
 
 /**
@@ -138,6 +145,13 @@ void __sched wait_for_completion(struct completion *x)
 	wait_for_common(x, MAX_SCHEDULE_TIMEOUT, TASK_UNINTERRUPTIBLE);
 }
 EXPORT_SYMBOL(wait_for_completion);
+void __sched wait_for_completion_fuzz(struct completion *x)
+{
+   lkl_ops->fuzz_ops->add_waiter(x);
+	wait_for_common(x, MAX_SCHEDULE_TIMEOUT, TASK_UNINTERRUPTIBLE);
+   lkl_ops->fuzz_ops->del_waiter(x);
+}
+EXPORT_SYMBOL(wait_for_completion_fuzz);
 
 /**
  * wait_for_completion_timeout: - waits for completion of a task (w/timeout)
@@ -157,6 +171,17 @@ wait_for_completion_timeout(struct completion *x, unsigned long timeout)
 	return wait_for_common(x, timeout, TASK_UNINTERRUPTIBLE);
 }
 EXPORT_SYMBOL(wait_for_completion_timeout);
+unsigned long __sched
+wait_for_completion_timeout_fuzz(struct completion *x, unsigned long timeout)
+{
+   unsigned long t;
+   lkl_ops->fuzz_ops->add_waiter(x);
+	t = wait_for_common(x, timeout, TASK_UNINTERRUPTIBLE);
+   lkl_ops->fuzz_ops->del_waiter(x);
+   return t;
+}
+EXPORT_SYMBOL(wait_for_completion_timeout_fuzz);
+
 
 /**
  * wait_for_completion_io: - waits for completion of a task
@@ -171,6 +196,14 @@ void __sched wait_for_completion_io(struct completion *x)
 	wait_for_common_io(x, MAX_SCHEDULE_TIMEOUT, TASK_UNINTERRUPTIBLE);
 }
 EXPORT_SYMBOL(wait_for_completion_io);
+void __sched wait_for_completion_io_fuzz(struct completion *x)
+{
+   lkl_ops->fuzz_ops->add_waiter(x);
+	wait_for_common_io(x, MAX_SCHEDULE_TIMEOUT, TASK_UNINTERRUPTIBLE);
+   lkl_ops->fuzz_ops->del_waiter(x);
+}
+EXPORT_SYMBOL(wait_for_completion_io_fuzz);
+
 
 /**
  * wait_for_completion_io_timeout: - waits for completion of a task (w/timeout)
@@ -191,6 +224,17 @@ wait_for_completion_io_timeout(struct completion *x, unsigned long timeout)
 	return wait_for_common_io(x, timeout, TASK_UNINTERRUPTIBLE);
 }
 EXPORT_SYMBOL(wait_for_completion_io_timeout);
+unsigned long __sched
+wait_for_completion_io_timeout_fuzz(struct completion *x, unsigned long timeout)
+{
+   unsigned long t;
+   lkl_ops->fuzz_ops->add_waiter(x);
+	t = wait_for_common_io(x, timeout, TASK_UNINTERRUPTIBLE);
+   lkl_ops->fuzz_ops->del_waiter(x);
+   return t;
+}
+EXPORT_SYMBOL(wait_for_completion_io_timeout_fuzz);
+
 
 /**
  * wait_for_completion_interruptible: - waits for completion of a task (w/intr)
@@ -209,6 +253,18 @@ int __sched wait_for_completion_interruptible(struct completion *x)
 	return 0;
 }
 EXPORT_SYMBOL(wait_for_completion_interruptible);
+int __sched wait_for_completion_interruptible_fuzz(struct completion *x)
+{
+   int t;
+   lkl_ops->fuzz_ops->add_waiter(x);
+	t = wait_for_common(x, MAX_SCHEDULE_TIMEOUT, TASK_INTERRUPTIBLE);
+   lkl_ops->fuzz_ops->del_waiter(x);
+	if (t == -ERESTARTSYS)
+		return t;
+	return 0;
+}
+EXPORT_SYMBOL(wait_for_completion_interruptible_fuzz);
+
 
 /**
  * wait_for_completion_interruptible_timeout: - waits for completion (w/(to,intr))
@@ -228,6 +284,18 @@ wait_for_completion_interruptible_timeout(struct completion *x,
 	return wait_for_common(x, timeout, TASK_INTERRUPTIBLE);
 }
 EXPORT_SYMBOL(wait_for_completion_interruptible_timeout);
+long __sched
+wait_for_completion_interruptible_timeout_fuzz(struct completion *x,
+					  unsigned long timeout)
+{
+   long t;
+   lkl_ops->fuzz_ops->add_waiter(x);
+	t = wait_for_common(x, timeout, TASK_INTERRUPTIBLE);
+   lkl_ops->fuzz_ops->del_waiter(x);
+   return t;
+}
+EXPORT_SYMBOL(wait_for_completion_interruptible_timeout_fuzz);
+
 
 /**
  * wait_for_completion_killable: - waits for completion of a task (killable)
@@ -246,6 +314,18 @@ int __sched wait_for_completion_killable(struct completion *x)
 	return 0;
 }
 EXPORT_SYMBOL(wait_for_completion_killable);
+int __sched wait_for_completion_killable_fuzz(struct completion *x)
+{
+   int t;
+   lkl_ops->fuzz_ops->add_waiter(x);
+	t = wait_for_common(x, MAX_SCHEDULE_TIMEOUT, TASK_KILLABLE);
+   lkl_ops->fuzz_ops->del_waiter(x);
+	if (t == -ERESTARTSYS)
+		return t;
+	return 0;
+}
+EXPORT_SYMBOL(wait_for_completion_killable_fuzz);
+
 
 /**
  * wait_for_completion_killable_timeout: - waits for completion of a task (w/(to,killable))
@@ -266,6 +346,18 @@ wait_for_completion_killable_timeout(struct completion *x,
 	return wait_for_common(x, timeout, TASK_KILLABLE);
 }
 EXPORT_SYMBOL(wait_for_completion_killable_timeout);
+long __sched
+wait_for_completion_killable_timeout_fuzz(struct completion *x,
+				     unsigned long timeout)
+{
+   long ret;
+   lkl_ops->fuzz_ops->add_waiter(x);
+	ret = wait_for_common(x, timeout, TASK_KILLABLE);
+   lkl_ops->fuzz_ops->del_waiter(x);
+   return ret;
+}
+EXPORT_SYMBOL(wait_for_completion_killable_timeout_fuzz);
+
 
 /**
  *	try_wait_for_completion - try to decrement a completion without blocking

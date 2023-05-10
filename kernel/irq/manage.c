@@ -21,6 +21,7 @@
 #include <linux/sched/isolation.h>
 #include <uapi/linux/sched/types.h>
 #include <linux/task_work.h>
+#include <asm/host_ops.h>
 
 #include "internals.h"
 
@@ -1772,6 +1773,7 @@ static struct irqaction *__free_irq(struct irq_desc *desc, void *dev_id)
 		irq_shutdown(desc);
 	}
 
+	lkl_ops->fuzz_ops->notify_irq_free(irq);
 #ifdef CONFIG_SMP
 	/* make sure affinity_hint is cleaned up */
 	if (WARN_ON_ONCE(desc->affinity_hint))
@@ -2060,6 +2062,8 @@ int request_threaded_irq(unsigned int irq, irq_handler_t handler,
 		irq_chip_pm_put(&desc->irq_data);
 		kfree(action->secondary);
 		kfree(action);
+	} else {
+		lkl_ops->fuzz_ops->notify_irq_request(irq);
 	}
 
 #ifdef CONFIG_DEBUG_SHIRQ_FIXME

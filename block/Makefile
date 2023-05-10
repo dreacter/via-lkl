@@ -3,6 +3,9 @@
 # Makefile for the kernel block layer
 #
 
+#CFLAGS_blk-timeout.o += -DFUZZ_REMOVE_DELAY_TIMER
+#CFLAGS_blk-mq.o += -DFUZZ_REMOVE_DELAY_TIMER -DFUZZ_REMOVE_DELAY
+subdir-ccflags-y += -DFUZZ_TRACE_WAIT
 obj-$(CONFIG_BLOCK) := bio.o elevator.o blk-core.o blk-sysfs.o \
 			blk-flush.o blk-settings.o blk-ioc.o blk-map.o \
 			blk-exec.o blk-merge.o blk-timeout.o \

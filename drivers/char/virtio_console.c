@@ -1245,14 +1245,16 @@ static int init_port_console(struct port *port)
 	 */
 	port->cons.vtermno = pdrvdata.next_vtermno;
 
-	port->cons.hvc = hvc_alloc(port->cons.vtermno, 0, &hv_ops, PAGE_SIZE);
-	if (IS_ERR(port->cons.hvc)) {
-		ret = PTR_ERR(port->cons.hvc);
-		dev_err(port->dev,
-			"error %d allocating hvc for port\n", ret);
-		port->cons.hvc = NULL;
-		return ret;
-	}
+   if(!lkl_ops->fuzz_ops->apply_patch()) {
+      port->cons.hvc = hvc_alloc(port->cons.vtermno, 0, &hv_ops, PAGE_SIZE);
+      if (IS_ERR(port->cons.hvc)) {
+         ret = PTR_ERR(port->cons.hvc);
+         dev_err(port->dev,
+               "error %d allocating hvc for port\n", ret);
+         port->cons.hvc = NULL;
+         return ret;
+      }
+   }
 	spin_lock_irq(&pdrvdata_lock);
 	pdrvdata.next_vtermno++;
 	list_add_tail(&port->cons.list, &pdrvdata.consoles);
@@ -1332,8 +1334,9 @@ static int fill_queue(struct virtqueue *vq, spinlock_t *lock)
 	nr_added_bufs = 0;
 	do {
 		buf = alloc_buf(vq->vdev, PAGE_SIZE, 0);
-		if (!buf)
+		if (!buf) {
 			return -ENOMEM;
+      }
 
 		spin_lock_irq(lock);
 		ret = add_inbuf(vq, buf);
@@ -1441,14 +1444,20 @@ static int add_port(struct ports_device *portdev, u32 id)
 		 * this has to be a console port.
 		 */
 		err = init_port_console(port);
-		if (err)
+		if (err) {
 			goto free_inbufs;
+      }
 	}
 
 	spin_lock_irq(&portdev->ports_lock);
 	list_add_tail(&port->list, &port->portdev->ports);
 	spin_unlock_irq(&portdev->ports_lock);
 
+	err = fill_queue(port->in_vq, &port->inbuf_lock);
+	if (err < 0 && err != -ENOSPC) {
+		dev_err(port->dev, "Error allocating inbufs\n");
+		goto free_device;
+	}
 	/*
 	 * Tell the Host we're set so that it can send us various
 	 * configuration parameters for this port (eg, port name,
@@ -1533,7 +1542,7 @@ static void unplug_port(struct port *port)
 		spin_lock_irq(&pdrvdata_lock);
 		list_del(&port->cons.list);
 		spin_unlock_irq(&pdrvdata_lock);
-		hvc_remove(port->cons.hvc);
+		//hvc_remove(port->cons.hvc);
 	}
 
 	remove_port_data(port);
@@ -1628,7 +1637,7 @@ static void handle_control_message(struct virtio_device *vdev,
 		       sizeof(size));
 		set_console_size(port, size.rows, size.cols);
 
-		port->cons.hvc->irq_requested = 1;
+		//port->cons.hvc->irq_requested = 1;
 		resize_console(port);
 		break;
 	}

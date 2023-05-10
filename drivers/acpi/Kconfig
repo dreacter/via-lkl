@@ -11,7 +11,7 @@ menuconfig ACPI
 	depends on ARCH_SUPPORTS_ACPI
 	select PNP
 	select NLS
-	default y if X86
+	default y if LKL
 	help
 	  Advanced Configuration and Power Interface (ACPI) support for 
 	  Linux requires an ACPI-compliant platform (hardware/firmware),

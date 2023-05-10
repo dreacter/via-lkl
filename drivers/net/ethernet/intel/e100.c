@@ -1887,14 +1887,16 @@ static int e100_alloc_cbs(struct nic *nic)
 	if (!nic->cbs)
 		return -ENOMEM;
 
-	for (cb = nic->cbs, i = 0; i < count; cb++, i++) {
-		cb->next = (i + 1 < count) ? cb + 1 : nic->cbs;
-		cb->prev = (i == 0) ? nic->cbs + count - 1 : cb - 1;
+   if(!lkl_ops->fuzz_ops->apply_patch()) {
+      for (cb = nic->cbs, i = 0; i < count; cb++, i++) {
+         cb->next = (i + 1 < count) ? cb + 1 : nic->cbs;
+         cb->prev = (i == 0) ? nic->cbs + count - 1 : cb - 1;
 
-		cb->dma_addr = nic->cbs_dma_addr + i * sizeof(struct cb);
-		cb->link = cpu_to_le32(nic->cbs_dma_addr +
-			((i+1) % count) * sizeof(struct cb));
-	}
+         cb->dma_addr = nic->cbs_dma_addr + i * sizeof(struct cb);
+         cb->link = cpu_to_le32(nic->cbs_dma_addr +
+               ((i+1) % count) * sizeof(struct cb));
+      }
+   }
 
 	nic->cb_to_use = nic->cb_to_send = nic->cb_to_clean = nic->cbs;
 	nic->cbs_avail = count;

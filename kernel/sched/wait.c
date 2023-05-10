@@ -5,6 +5,7 @@
  * (C) 2004 Nadia Yvette Chambers, Oracle
  */
 #include "sched.h"
+#include <asm/host_ops.h>
 
 void __init_waitqueue_head(struct wait_queue_head *wq_head, const char *name, struct lock_class_key *key)
 {
@@ -271,6 +272,15 @@ void init_wait_entry(struct wait_queue_entry *wq_entry, int flags)
 	INIT_LIST_HEAD(&wq_entry->entry);
 }
 EXPORT_SYMBOL(init_wait_entry);
+void init_wait_entry_fuzz(struct wait_queue_entry *wq_entry, int flags)
+{
+	wq_entry->flags = flags;
+	wq_entry->private = current;
+	wq_entry->func = autoremove_wake_function;
+	INIT_LIST_HEAD(&wq_entry->entry);
+   lkl_ops->fuzz_ops->add_waiter(wq_entry);
+}
+EXPORT_SYMBOL(init_wait_entry_fuzz);
 
 long prepare_to_wait_event(struct wait_queue_head *wq_head, struct wait_queue_entry *wq_entry, int state)
 {
@@ -383,6 +393,32 @@ void finish_wait(struct wait_queue_head *wq_head, struct wait_queue_entry *wq_en
 	}
 }
 EXPORT_SYMBOL(finish_wait);
+void finish_wait_fuzz(struct wait_queue_head *wq_head, struct wait_queue_entry *wq_entry)
+{
+	unsigned long flags;
+
+   lkl_ops->fuzz_ops->del_waiter(wq_entry);
+	__set_current_state(TASK_RUNNING);
+	/*
+	 * We can check for list emptiness outside the lock
+	 * IFF:
+	 *  - we use the "careful" check that verifies both
+	 *    the next and prev pointers, so that there cannot
+	 *    be any half-pending updates in progress on other
+	 *    CPU's that we haven't seen yet (and that might
+	 *    still change the stack area.
+	 * and
+	 *  - all other users take the lock (ie we can only
+	 *    have _one_ other CPU that looks at or modifies
+	 *    the list).
+	 */
+	if (!list_empty_careful(&wq_entry->entry)) {
+		spin_lock_irqsave(&wq_head->lock, flags);
+		list_del_init(&wq_entry->entry);
+		spin_unlock_irqrestore(&wq_head->lock, flags);
+	}
+}
+EXPORT_SYMBOL(finish_wait_fuzz);
 
 int autoremove_wake_function(struct wait_queue_entry *wq_entry, unsigned mode, int sync, void *key)
 {

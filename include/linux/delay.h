@@ -56,9 +56,26 @@ static inline void ndelay(unsigned long x)
 extern unsigned long lpj_fine;
 void calibrate_delay(void);
 void __attribute__((weak)) calibration_delay_done(void);
+
+#if defined(MODULE) || defined(FUZZ_REMOVE_DELAY)
+void msleep_fuzz(unsigned int msecs);
+unsigned long msleep_interruptible_fuzz(unsigned int msecs);
+void usleep_range_fuzz(unsigned long min, unsigned long max);
+#define msleep msleep_fuzz
+#define msleep_interruptible msleep_interruptible_fuzz
+#define usleep_range usleep_range_fuzz
+#elif defined(FUZZ_REMOVE_DELAY_1)
+void msleep_fuzz_1(unsigned int msecs);
+unsigned long msleep_interruptible_fuzz_1(unsigned int msecs);
+void usleep_range_fuzz_1(unsigned long min, unsigned long max);
+#define msleep msleep_fuzz_1
+#define msleep_interruptible msleep_interruptible_fuzz_1
+#define usleep_range usleep_range_fuzz_1
+#else
 void msleep(unsigned int msecs);
 unsigned long msleep_interruptible(unsigned int msecs);
 void usleep_range(unsigned long min, unsigned long max);
+#endif
 
 static inline void ssleep(unsigned int seconds)
 {

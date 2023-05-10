@@ -16,6 +16,12 @@
 #define KCRC_ALIGN 4
 #endif
 
+#ifdef CONFIG_HAVE_UNDERSCORE_SYMBOL_PREFIX
+#define KSYM(name) _##name
+#else
+#define KSYM(name) name
+#endif
+
 .macro __put, val, name
 #ifdef CONFIG_HAVE_ARCH_PREL32_RELOCATIONS
 	.long	\val - ., \name - ., 0
@@ -36,22 +42,23 @@
 #ifdef CONFIG_MODULES
 	.section ___ksymtab\sec+\name,"a"
 	.balign KSYM_ALIGN
-__ksymtab_\name:
-	__put \val, __kstrtab_\name
+KSYM(__ksymtab_\name):
+	__put \val, KSYM(__kstrtab_\name)
 	.previous
 	.section __ksymtab_strings,"aMS",%progbits,1
 __kstrtab_\name:
 	.asciz "\name"
+#endif
 	.previous
 #ifdef CONFIG_MODVERSIONS
 	.section ___kcrctab\sec+\name,"a"
 	.balign KCRC_ALIGN
 #if defined(CONFIG_MODULE_REL_CRCS)
-	.long __crc_\name - .
+	.long KSYM(__crc_\name) - .
 #else
-	.long __crc_\name
+	.long KSYM(__crc_\name)
 #endif
-	.weak __crc_\name
+	.weak KSYM(__crc_\name)
 	.previous
 #endif
 #endif
@@ -83,12 +90,12 @@ __ksym_marker_\sym:
 #endif
 
 #define EXPORT_SYMBOL(name)					\
-	__EXPORT_SYMBOL(name, KSYM_FUNC(name),)
+	__EXPORT_SYMBOL(name, KSYM_FUNC(KSYM(name)),)
 #define EXPORT_SYMBOL_GPL(name) 				\
-	__EXPORT_SYMBOL(name, KSYM_FUNC(name), _gpl)
+	__EXPORT_SYMBOL(name, KSYM_FUNC(KSYM(name)), _gpl)
 #define EXPORT_DATA_SYMBOL(name)				\
-	__EXPORT_SYMBOL(name, name,)
+	__EXPORT_SYMBOL(name, KSYM(name),)
 #define EXPORT_DATA_SYMBOL_GPL(name)				\
-	__EXPORT_SYMBOL(name, name,_gpl)
+	__EXPORT_SYMBOL(name, KSYM(name),_gpl)
 
 #endif

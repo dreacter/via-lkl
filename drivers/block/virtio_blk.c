@@ -228,7 +228,14 @@ static blk_status_t virtio_queue_rq(struct blk_mq_hw_ctx *hctx,
 	bool unmap = false;
 	u32 type;
 
-	BUG_ON(req->nr_phys_segments + 2 > vblk->sg_elems);
+	if(lkl_ops->fuzz_ops->apply_patch()) {
+		if(req->nr_phys_segments + 2 > vblk->sg_elems) {
+			return BLK_STS_IOERR;
+		}
+	} else {
+		BUG_ON(req->nr_phys_segments + 2 > vblk->sg_elems);
+	}
+
 
 	switch (req_op(req)) {
 	case REQ_OP_READ:
@@ -506,6 +513,12 @@ static int init_vq(struct virtio_blk *vblk)
 		num_vqs = 1;
 
 	num_vqs = min_t(unsigned int, nr_cpu_ids, num_vqs);
+	if(lkl_ops->fuzz_ops->apply_patch_2()) {
+		if(num_vqs<1) {
+			num_vqs=1;
+		}
+	}
+
 
 	vblk->vqs = kmalloc_array(num_vqs, sizeof(*vblk->vqs), GFP_KERNEL);
 	if (!vblk->vqs)
@@ -825,10 +838,17 @@ static int virtblk_probe(struct virtio_device *vdev)
 	err = virtio_cread_feature(vdev, VIRTIO_BLK_F_BLK_SIZE,
 				   struct virtio_blk_config, blk_size,
 				   &blk_size);
-	if (!err)
+	if (!err) {
+		if(lkl_ops->fuzz_ops->apply_patch_2()) {
+			if(blk_size < 512 || blk_size > PAGE_SIZE) {
+				pr_err("%s:%d WARNING: fixing blk size %d\n", __FUNCTION__, __LINE__, blk_size);
+				blk_size = 512;
+			}
+		}
 		blk_queue_logical_block_size(q, blk_size);
-	else
+	} else {
 		blk_size = queue_logical_block_size(q);
+	}
 
 	/* Use topology information if available */
 	err = virtio_cread_feature(vdev, VIRTIO_BLK_F_TOPOLOGY,

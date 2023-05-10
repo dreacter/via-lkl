@@ -324,7 +324,11 @@ void nvme_complete_rq(struct request *req)
 
 	switch (nvme_decide_disposition(req)) {
 	case COMPLETE:
-		nvme_end_req(req);
+      if(req->end_io_data) {
+         nvme_end_req(req);
+      } else {
+         pr_err("%s warning trying to terminate uninitialized request\n", __FUNCTION__);
+      }
 		return;
 	case RETRY:
 		nvme_retry_req(req);
@@ -3117,7 +3121,7 @@ int nvme_init_identify(struct nvme_ctrl *ctrl)
 	ret = nvme_configure_apst(ctrl);
 	if (ret < 0)
 		return ret;
-	
+
 	ret = nvme_configure_timestamp(ctrl);
 	if (ret < 0)
 		return ret;

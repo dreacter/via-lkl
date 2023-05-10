@@ -134,8 +134,15 @@ void blk_add_timer(struct request *req)
 	 * Some LLDs, like scsi, peek at the timeout to prevent a
 	 * command from being retried forever.
 	 */
+	pr_err("%s:%d timeout %ld/%ld\n", __FUNCTION__, __LINE__, req->timeout, q->rq_timeout);
 	if (!req->timeout)
 		req->timeout = q->rq_timeout;
+
+	if(lkl_ops->fuzz_ops->is_active() && req->timeout > 1) {
+		pr_err("%s:%d adjusting timeout %ld -> %ld\n", __FUNCTION__, __LINE__, req->timeout, 1);
+		req->timeout = 1;
+	}
+
 
 	req->rq_flags &= ~RQF_TIMED_OUT;
 

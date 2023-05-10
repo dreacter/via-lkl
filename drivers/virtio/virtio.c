@@ -224,7 +224,7 @@ static int virtio_dev_probe(struct device *_d)
 	driver_features = 0;
 	for (i = 0; i < drv->feature_table_size; i++) {
 		unsigned int f = drv->feature_table[i];
-		BUG_ON(f >= 64);
+      BUG_ON(f >= 64);
 		driver_features |= (1ULL << f);
 	}
 
@@ -233,17 +233,18 @@ static int virtio_dev_probe(struct device *_d)
 		driver_features_legacy = 0;
 		for (i = 0; i < drv->feature_table_size_legacy; i++) {
 			unsigned int f = drv->feature_table_legacy[i];
-			BUG_ON(f >= 64);
+         BUG_ON(f >= 64);
 			driver_features_legacy |= (1ULL << f);
 		}
 	} else {
 		driver_features_legacy = driver_features;
 	}
 
-	if (device_features & (1ULL << VIRTIO_F_VERSION_1))
+	if (device_features & (1ULL << VIRTIO_F_VERSION_1)) {
 		dev->features = driver_features & device_features;
-	else
-		dev->features = driver_features_legacy & device_features;
+   } else {
+      dev->features = driver_features_legacy & device_features;
+   }
 
 	/* Transport features always preserved to pass to finalize_features. */
 	for (i = VIRTIO_TRANSPORT_F_START; i < VIRTIO_TRANSPORT_F_END; i++)

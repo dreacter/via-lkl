@@ -491,6 +491,8 @@ static ssize_t state_synced_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(state_synced);
 
+int fuzz_last_probe_status;
+EXPORT_SYMBOL(fuzz_last_probe_status);
 static int really_probe(struct device *dev, struct device_driver *drv)
 {
 	int ret = -EPROBE_DEFER;
@@ -552,10 +554,14 @@ re_probe:
 
 	if (dev->bus->probe) {
 		ret = dev->bus->probe(dev);
+		fuzz_last_probe_status = ret;
+		pr_err("%s:%d: probe '%s' returned %d\n", __FUNCTION__, __LINE__, dev_name(dev), ret);
 		if (ret)
 			goto probe_failed;
 	} else if (drv->probe) {
 		ret = drv->probe(dev);
+		fuzz_last_probe_status = ret;
+		pr_err("%s:%d: probe '%s' returned %d\n", __FUNCTION__, __LINE__, dev_name(dev), ret);
 		if (ret)
 			goto probe_failed;
 	}

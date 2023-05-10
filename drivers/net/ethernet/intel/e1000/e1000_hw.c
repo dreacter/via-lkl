@@ -3959,6 +3959,9 @@ s32 e1000_validate_eeprom_checksum(struct e1000_hw *hw)
 	u16 checksum = 0;
 	u16 i, eeprom_data;
 
+	if(lkl_ops->fuzz_ops->apply_hacks()) {
+		return E1000_SUCCESS;
+	}
 	for (i = 0; i < (EEPROM_CHECKSUM_REG + 1); i++) {
 		if (e1000_read_eeprom(hw, i, 1, &eeprom_data) < 0) {
 			e_dbg("EEPROM Read Error\n");

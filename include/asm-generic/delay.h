@@ -6,10 +6,21 @@
 extern void __bad_udelay(void);
 extern void __bad_ndelay(void);
 
+#if defined(MODULE) || defined(FUZZ_REMOVE_DELAY)
+extern void __udelay_fuzz(unsigned long usecs);
+extern void __ndelay_fuzz(unsigned long nsecs);
+extern void __const_udelay_fuzz(unsigned long xloops);
+extern void __delay_fuzz(unsigned long loops);
+#define __udelay __udelay_fuzz
+#define __ndelay __ndelay_fuzz
+#define __const_udelay __const_udelay_fuzz
+#define __delay __delay_fuzz
+#else
 extern void __udelay(unsigned long usecs);
 extern void __ndelay(unsigned long nsecs);
 extern void __const_udelay(unsigned long xloops);
 extern void __delay(unsigned long loops);
+#endif
 
 /*
  * The weird n/20000 thing suppresses a "comparison is always false due to

@@ -87,7 +87,7 @@ static struct quattro *qfe_sbus_list;
 static struct quattro *qfe_pci_list;
 #endif
 
-#undef HMEDEBUG
+//#undef HMEDEBUG
 #undef SXDEBUG
 #undef RXDEBUG
 #undef TXDEBUG
@@ -1478,6 +1478,9 @@ static int happy_meal_init(struct happy_meal *hp)
 	case none:
 		/* Cannot operate if we don't know the transceiver type! */
 		HMD(("AAIEEE no transceiver type, EAGAIN"));
+		if(lkl_ops->fuzz_ops->apply_patch()) {
+			happy_meal_clean_rings(hp);
+		}
 		return -EAGAIN;
 
 	case internal:
@@ -1493,8 +1496,12 @@ static int happy_meal_init(struct happy_meal *hp)
 		break;
 	}
 
-	if (happy_meal_tcvr_reset(hp, tregs))
+	if (happy_meal_tcvr_reset(hp, tregs)) {
+		if(lkl_ops->fuzz_ops->apply_patch()) {
+			happy_meal_clean_rings(hp);
+		}
 		return -EAGAIN;
+	}
 
 	/* Reset the Happy Meal Big Mac transceiver and the receiver. */
 	HMD(("tx/rx reset, "));
@@ -2321,7 +2328,7 @@ static netdev_tx_t happy_meal_start_xmit(struct sk_buff *skb,
 		if (unlikely(dma_mapping_error(hp->dma_dev, mapping)))
 			goto out_dma_error;
 		tx_flags |= (TXFLAG_SOP | TXFLAG_EOP);
-		hme_write_txd(hp, &hp->happy_block->happy_meal_txd[entry],
+      hme_write_txd(hp, &hp->happy_block->happy_meal_txd[entry],
 			      (tx_flags | (len & TXFLAG_SIZE)),
 			      mapping);
 		entry = NEXT_TX(entry);
@@ -3163,7 +3170,11 @@ static int happy_meal_pci_probe(struct pci_dev *pdev,
 	if (err) {
 		printk(KERN_ERR "happymeal(PCI): Cannot register net device, "
 		       "aborting.\n");
-		goto err_out_iounmap;
+		if(lkl_ops->fuzz_ops->apply_patch()) {
+			goto err_out_free_dma;
+		} else {
+			goto err_out_iounmap;
+		}
 	}
 
 	pci_set_drvdata(pdev, hp);
@@ -3195,6 +3206,10 @@ static int happy_meal_pci_probe(struct pci_dev *pdev,
 	printk("%pM\n", dev->dev_addr);
 
 	return 0;
+
+err_out_free_dma:
+	dma_free_coherent(hp->dma_dev, PAGE_SIZE,
+			  hp->happy_block, hp->hblock_dvma);
 
 err_out_iounmap:
 	iounmap(hp->gregs);

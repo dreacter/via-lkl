@@ -9,6 +9,7 @@
 #include <linux/spinlock.h>
 
 #include <asm/current.h>
+#include <asm/host_ops.h>
 #include <uapi/linux/wait.h>
 
 typedef struct wait_queue_entry wait_queue_entry_t;
@@ -247,7 +248,12 @@ void __wake_up_sync(struct wait_queue_head *wq_head, unsigned int mode);
 	(!__builtin_constant_p(state) ||					\
 		state == TASK_INTERRUPTIBLE || state == TASK_KILLABLE)		\
 
+#if defined(MODULE) || defined(FUZZ_TRACE_WAIT)
+extern void init_wait_entry_fuzz(struct wait_queue_entry *wq_entry, int flags);
+#define init_wait_entry init_wait_entry_fuzz
+#else
 extern void init_wait_entry(struct wait_queue_entry *wq_entry, int flags);
+#endif
 
 /*
  * The below macro ___wait_event() has an explicit shadow of the __ret
@@ -352,7 +358,7 @@ do {										\
 #define __wait_event_timeout(wq_head, condition, timeout)			\
 	___wait_event(wq_head, ___wait_cond_timeout(condition),			\
 		      TASK_UNINTERRUPTIBLE, 0, timeout,				\
-		      __ret = schedule_timeout(__ret))
+		      __ret = schedule_timeout_nofuzz(__ret))
 
 /**
  * wait_event_timeout - sleep until a condition gets true or a timeout elapses
@@ -385,7 +391,7 @@ do {										\
 #define __wait_event_freezable_timeout(wq_head, condition, timeout)		\
 	___wait_event(wq_head, ___wait_cond_timeout(condition),			\
 		      TASK_INTERRUPTIBLE, 0, timeout,				\
-		      __ret = freezable_schedule_timeout(__ret))
+		      __ret = freezable_schedule_timeout_nofuzz(__ret))
 
 /*
  * like wait_event_timeout() -- except it uses TASK_INTERRUPTIBLE to avoid
@@ -469,7 +475,7 @@ do {										\
 #define __wait_event_interruptible_timeout(wq_head, condition, timeout)		\
 	___wait_event(wq_head, ___wait_cond_timeout(condition),			\
 		      TASK_INTERRUPTIBLE, 0, timeout,				\
-		      __ret = schedule_timeout(__ret))
+		      __ret = schedule_timeout_nofuzz(__ret))
 
 /**
  * wait_event_interruptible_timeout - sleep until a condition gets true or a timeout elapses
@@ -664,7 +670,7 @@ do {										\
 #define __wait_event_idle_timeout(wq_head, condition, timeout)			\
 	___wait_event(wq_head, ___wait_cond_timeout(condition),			\
 		      TASK_IDLE, 0, timeout,					\
-		      __ret = schedule_timeout(__ret))
+		      __ret = schedule_timeout_nofuzz(__ret))
 
 /**
  * wait_event_idle_timeout - sleep without load until a condition becomes true or a timeout elapses
@@ -697,7 +703,7 @@ do {										\
 #define __wait_event_idle_exclusive_timeout(wq_head, condition, timeout)	\
 	___wait_event(wq_head, ___wait_cond_timeout(condition),			\
 		      TASK_IDLE, 1, timeout,					\
-		      __ret = schedule_timeout(__ret))
+		      __ret = schedule_timeout_nofuzz(__ret))
 
 /**
  * wait_event_idle_exclusive_timeout - sleep without load until a condition becomes true or a timeout elapses
@@ -898,7 +904,7 @@ extern int do_wait_intr_irq(wait_queue_head_t *, wait_queue_entry_t *);
 #define __wait_event_killable_timeout(wq_head, condition, timeout)		\
 	___wait_event(wq_head, ___wait_cond_timeout(condition),			\
 		      TASK_KILLABLE, 0, timeout,				\
-		      __ret = schedule_timeout(__ret))
+		      __ret = schedule_timeout_nofuzz(__ret))
 
 /**
  * wait_event_killable_timeout - sleep until a condition gets true or a timeout elapses
@@ -1074,7 +1080,7 @@ do {										\
 	___wait_event(wq_head, ___wait_cond_timeout(condition),			\
 		      state, 0, timeout,					\
 		      spin_unlock_irq(&lock);					\
-		      __ret = schedule_timeout(__ret);				\
+		      __ret = schedule_timeout_nofuzz(__ret);				\
 		      spin_lock_irq(&lock));
 
 /**
@@ -1128,7 +1134,12 @@ do {										\
 void prepare_to_wait(struct wait_queue_head *wq_head, struct wait_queue_entry *wq_entry, int state);
 void prepare_to_wait_exclusive(struct wait_queue_head *wq_head, struct wait_queue_entry *wq_entry, int state);
 long prepare_to_wait_event(struct wait_queue_head *wq_head, struct wait_queue_entry *wq_entry, int state);
+#if defined(MODULE) || defined(FUZZ_TRACE_WAIT)
+void finish_wait_fuzz(struct wait_queue_head *wq_head, struct wait_queue_entry *wq_entry);
+#define finish_wait finish_wait_fuzz
+#else
 void finish_wait(struct wait_queue_head *wq_head, struct wait_queue_entry *wq_entry);
+#endif
 long wait_woken(struct wait_queue_entry *wq_entry, unsigned mode, long timeout);
 int woken_wake_function(struct wait_queue_entry *wq_entry, unsigned mode, int sync, void *key);
 int autoremove_wake_function(struct wait_queue_entry *wq_entry, unsigned mode, int sync, void *key);
@@ -1142,6 +1153,21 @@ int autoremove_wake_function(struct wait_queue_entry *wq_entry, unsigned mode, i
 
 #define DEFINE_WAIT(name) DEFINE_WAIT_FUNC(name, autoremove_wake_function)
 
+#if defined(MODULE) || defined(FUZZ_TRACE_WAIT)
+// Note(feli): this seems to implement the same functionality
+// as init_wait_entry ...
+
+#define init_wait(wait)								\
+	do {									\
+		(wait)->private = current;					\
+		(wait)->func = autoremove_wake_function;			\
+		INIT_LIST_HEAD(&(wait)->entry);					\
+		(wait)->flags = 0;						\
+		lkl_ops->fuzz_ops->add_waiter(wait); \
+	} while (0)
+
+#else
+
 #define init_wait(wait)								\
 	do {									\
 		(wait)->private = current;					\
@@ -1149,6 +1175,8 @@ int autoremove_wake_function(struct wait_queue_entry *wq_entry, unsigned mode, i
 		INIT_LIST_HEAD(&(wait)->entry);					\
 		(wait)->flags = 0;						\
 	} while (0)
+
+#endif
 
 bool try_invoke_on_locked_down_task(struct task_struct *p, bool (*func)(struct task_struct *t, void *arg), void *arg);
 

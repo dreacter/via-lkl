@@ -25,6 +25,7 @@
 #include <linux/smpboot.h>
 #include <linux/tick.h>
 #include <linux/irq.h>
+#include <asm/cpu.h>
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/irq.h>
@@ -653,6 +654,7 @@ static void run_ksoftirqd(unsigned int cpu)
 		__do_softirq();
 		local_irq_enable();
 		cond_resched();
+		lkl_cpu_preempt();
 		return;
 	}
 	local_irq_enable();

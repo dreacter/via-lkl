@@ -47,11 +47,11 @@
 
 /* These are for everybody (although not all archs will actually
    discard it in modules) */
-#define __init		__section(".init.text") __cold  __latent_entropy __noinitretpoline
-#define __initdata	__section(".init.data")
-#define __initconst	__section(".init.rodata")
-#define __exitdata	__section(".exit.data")
-#define __exit_call	__used __section(".exitcall.exit")
+#define __init		__section_san(".init.text") __cold  __latent_entropy __noinitretpoline
+#define __initdata	__section_san(".init.data")
+#define __initconst	__section_san(".init.rodata")
+#define __exitdata	__section_san(".exit.data")
+#define __exit_call	__used __section_san(".exitcall.exit")
 
 /*
  * modpost check for section mismatches during the kernel build.
@@ -80,15 +80,15 @@
 #define __exitused  __used
 #endif
 
-#define __exit          __section(".exit.text") __exitused __cold notrace
+#define __exit          __section_san(".exit.text") __exitused __cold notrace
 
 /* Used for MEMORY_HOTPLUG */
-#define __meminit        __section(".meminit.text") __cold notrace \
+#define __meminit        __section_san(".meminit.text") __cold notrace \
 						  __latent_entropy
-#define __meminitdata    __section(".meminit.data")
+#define __meminitdata    __section_san(".meminit.data")
 #define __meminitconst   __section(".meminit.rodata")
-#define __memexit        __section(".memexit.text") __exitused __cold notrace
-#define __memexitdata    __section(".memexit.data")
+#define __memexit        __section_san(".memexit.text") __exitused __cold notrace
+#define __memexitdata    __section_san(".memexit.data")
 #define __memexitconst   __section(".memexit.rodata")
 
 /* For assembly routines */
@@ -194,7 +194,7 @@ extern bool initcall_debug;
 #else
 #define ___define_initcall(fn, id, __sec) \
 	static initcall_t __initcall_##fn##id __used \
-		__attribute__((__section__(#__sec ".init"))) = fn;
+		__attribute__((no_sanitize("address"), __section__(#__sec ".init"))) = fn;
 #endif
 
 #define __define_initcall(fn, id) ___define_initcall(fn, id, .initcall##id)
@@ -255,7 +255,7 @@ struct obs_kernel_param {
 		__aligned(1) = str; 					\
 	static struct obs_kernel_param __setup_##unique_id		\
 		__used __section(".init.setup")				\
-		__attribute__((aligned((sizeof(long)))))		\
+		__attribute__((no_sanitize("address"), aligned((sizeof(long)))))		\
 		= { __setup_str_##unique_id, fn, early }
 
 #define __setup(str, fn)						\
@@ -298,7 +298,7 @@ void __init parse_early_options(char *cmdline);
 #endif
 
 /* Data marked not to be saved by software suspend */
-#define __nosavedata __section(".data..nosave")
+#define __nosavedata __section_san(".data..nosave")
 
 #ifdef MODULE
 #define __exit_p(x) x

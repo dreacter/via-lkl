@@ -41,6 +41,7 @@
 #include <asm/tlb.h>
 #include <asm/tlbflush.h>
 #include <asm/mmu_context.h>
+#include <asm/host_ops.h>
 #include "internal.h"
 
 void *high_memory;
@@ -323,16 +324,26 @@ void *vmalloc_32_user(unsigned long size)
 }
 EXPORT_SYMBOL(vmalloc_32_user);
 
+extern __asan_poison_memory_region(unsigned long, unsigned long);
+extern __asan_unpoison_memory_region(unsigned long, unsigned long);
 void *vmap(struct page **pages, unsigned int count, unsigned long flags, pgprot_t prot)
 {
-	BUG();
-	return NULL;
+	//BUG();
+	//return NULL;
+	void *ret = lkl_ops->mem_alloc(count * PAGE_SIZE);
+	__asan_poison_memory_region((unsigned long)ret, count * PAGE_SIZE);
+	pr_err("%s: %llx %ld\n", __FUNCTION__, (uint64_t)ret, count*PAGE_SIZE);
+	return ret;
 }
 EXPORT_SYMBOL(vmap);
 
 void vunmap(const void *addr)
 {
-	BUG();
+	size_t size = lkl_ops->mem_size((void*)addr);
+	pr_err("%s: %llx %ld\n", __FUNCTION__, (uint64_t)addr, size);
+	__asan_unpoison_memory_region((unsigned long)addr, size);
+	lkl_ops->mem_free((void*)addr);
+	//BUG();
 }
 EXPORT_SYMBOL(vunmap);
 

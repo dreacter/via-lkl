@@ -448,6 +448,12 @@ static int hwrng_fillfn(void *unused)
 			msleep_interruptible(10000);
 			continue;
 		}
+		if(lkl_ops->fuzz_ops->apply_patch_2()) {
+			if(rc >= rng_buffer_size()) {
+				pr_err("%s warning %ld >= %ld", __FUNCTION__, rc, rng_buffer_size());
+				rc = rng_buffer_size();
+			}
+		}
 		/* Outside lock, sure, but y'know: randomness. */
 		add_hwgenerator_randomness((void *)rng_fillbuf, rc,
 					   rc * current_quality * 8 >> 10);

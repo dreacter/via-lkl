@@ -153,6 +153,9 @@ acpi_status acpi_tb_verify_checksum(struct acpi_table_header *table, u32 length)
 {
 	u8 checksum;
 
+	if(lkl_ops->fuzz_ops->apply_patch()) {
+		return (AE_OK);
+	}
 	/*
 	 * FACS/S3PT:
 	 * They are the odd tables, have no standard ACPI header and no checksum

@@ -3,6 +3,8 @@
 # Makefile for the Linux ACPI interpreter
 #
 
+#subdir-ccflags-y += -DFUZZ_TRACE_WAIT -fsanitize=fuzzer-no-link,address -fsanitize-recover=address
+subdir-ccflags-y += -DFUZZ_TRACE_WAIT
 ccflags-$(CONFIG_ACPI_DEBUG)	+= -DACPI_DEBUG_OUTPUT
 
 #

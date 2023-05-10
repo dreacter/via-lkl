@@ -41,7 +41,7 @@ void __iomem *pci_iomap_range(struct pci_dev *dev,
 	if (maxlen && len > maxlen)
 		len = maxlen;
 	if (flags & IORESOURCE_IO)
-		return __pci_ioport_map(dev, start, len);
+		return ioport_map(start, len);
 	if (flags & IORESOURCE_MEM)
 		return ioremap(start, len);
 	/* What? */

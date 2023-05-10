@@ -74,8 +74,10 @@ extern ssize_t __modver_version_show(struct module_attribute *,
 extern struct module_attribute module_uevent;
 
 /* These are either module local, or the kernel's dummy ones. */
-extern int init_module(void);
-extern void cleanup_module(void);
+// Note(feli): if loading multiple modules, we have to hide these symbols
+// otherwise they will be overwritten
+extern int  __attribute__((visibility ("hidden"))) init_module(void);
+extern void __attribute__((visibility ("hidden"))) cleanup_module(void);
 
 #ifndef MODULE
 /**

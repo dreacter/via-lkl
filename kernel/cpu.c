@@ -2510,6 +2510,11 @@ void __init boot_cpu_hotplug_init(void)
 	this_cpu_write(cpuhp_state.state, CPUHP_ONLINE);
 }
 
+void __weak cpu_yield_to_irqs(void)
+{
+}
+EXPORT_SYMBOL(cpu_yield_to_irqs);
+
 /*
  * These are used for a global "mitigations=" cmdline option for toggling
  * optional CPU mitigations.

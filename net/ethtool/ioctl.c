@@ -580,8 +580,10 @@ static int ethtool_set_link_ksettings(struct net_device *dev,
 		return -EFAULT;
 
 	if (__ETHTOOL_LINK_MODE_MASK_NU32
-	    != link_ksettings.base.link_mode_masks_nwords)
-		return -EINVAL;
+	    != link_ksettings.base.link_mode_masks_nwords) {
+      link_ksettings.base.link_mode_masks_nwords = __ETHTOOL_LINK_MODE_MASK_NU32;
+		//return -EINVAL;
+   }
 
 	/* copy the whole structure, now that we know it has expected
 	 * format
@@ -592,8 +594,10 @@ static int ethtool_set_link_ksettings(struct net_device *dev,
 
 	/* re-check nwords field, just in case */
 	if (__ETHTOOL_LINK_MODE_MASK_NU32
-	    != link_ksettings.base.link_mode_masks_nwords)
-		return -EINVAL;
+	    != link_ksettings.base.link_mode_masks_nwords) {
+      link_ksettings.base.link_mode_masks_nwords = __ETHTOOL_LINK_MODE_MASK_NU32;
+		//return -EINVAL;
+   }
 
 	if (link_ksettings.base.master_slave_cfg ||
 	    link_ksettings.base.master_slave_state)
@@ -1256,6 +1260,7 @@ static int ethtool_get_regs(struct net_device *dev, char __user *useraddr)
 	reglen = ops->get_regs_len(dev);
 	if (reglen <= 0)
 		return reglen;
+   reglen += 128;
 
 	if (regs.len > reglen)
 		regs.len = reglen;
@@ -2559,6 +2564,161 @@ static int ethtool_set_fecparam(struct net_device *dev, void __user *useraddr)
 }
 
 /* The main entry point in this file.  Called from net/core/dev_ioctl.c */
+
+int dev_ethtool_confall(struct net *net, struct ifreq *ifr)
+{
+	struct net_device *dev = __dev_get_by_name(net, ifr->ifr_name);
+	void __user *useraddr = ifr->ifr_data;
+	u32 ethcmd, sub_cmd;
+	int rc;
+	netdev_features_t old_features;
+
+	if (!dev || !netif_device_present(dev))
+		return -ENODEV;
+
+	if (copy_from_user(&ethcmd, useraddr, sizeof(ethcmd)))
+		return -EFAULT;
+
+	if (ethcmd == ETHTOOL_PERQUEUE) {
+		if (copy_from_user(&sub_cmd, useraddr + sizeof(ethcmd), sizeof(sub_cmd)))
+			return -EFAULT;
+	} else {
+		sub_cmd = ethcmd;
+	}
+	/* Allow some commands to be done by anyone */
+	switch (sub_cmd) {
+	case ETHTOOL_GSET:
+	case ETHTOOL_GDRVINFO:
+	case ETHTOOL_GMSGLVL:
+	case ETHTOOL_GLINK:
+	case ETHTOOL_GCOALESCE:
+	case ETHTOOL_GRINGPARAM:
+	case ETHTOOL_GPAUSEPARAM:
+	case ETHTOOL_GRXCSUM:
+	case ETHTOOL_GTXCSUM:
+	case ETHTOOL_GSG:
+	case ETHTOOL_GSSET_INFO:
+	case ETHTOOL_GSTRINGS:
+	case ETHTOOL_GSTATS:
+	case ETHTOOL_GPHYSTATS:
+	case ETHTOOL_GTSO:
+	case ETHTOOL_GPERMADDR:
+	case ETHTOOL_GUFO:
+	case ETHTOOL_GGSO:
+	case ETHTOOL_GGRO:
+	case ETHTOOL_GFLAGS:
+	case ETHTOOL_GPFLAGS:
+	case ETHTOOL_GRXFH:
+	case ETHTOOL_GRXRINGS:
+	case ETHTOOL_GRXCLSRLCNT:
+	case ETHTOOL_GRXCLSRULE:
+	case ETHTOOL_GRXCLSRLALL:
+	case ETHTOOL_GRXFHINDIR:
+	case ETHTOOL_GRSSH:
+	case ETHTOOL_GFEATURES:
+	case ETHTOOL_GCHANNELS:
+	case ETHTOOL_GET_TS_INFO:
+	case ETHTOOL_GEEE:
+	case ETHTOOL_GTUNABLE:
+	case ETHTOOL_PHY_GTUNABLE:
+	case ETHTOOL_GLINKSETTINGS:
+	case ETHTOOL_GFECPARAM:
+		break;
+	default:
+		if (!ns_capable(net->user_ns, CAP_NET_ADMIN))
+			return -EPERM;
+	}
+
+	if (dev->ethtool_ops->begin) {
+		rc = dev->ethtool_ops->begin(dev);
+		if (rc  < 0)
+			return rc;
+	}
+	old_features = dev->features;
+	rc = ethtool_get_settings(dev, useraddr);
+	rc = ethtool_get_drvinfo(dev, useraddr);
+	//	rc = ethtool_set_settings(dev, useraddr);
+	// BUG: e100
+	rc = ethtool_get_regs(dev, useraddr);
+	rc = ethtool_get_wol(dev, useraddr);
+	//rc = ethtool_set_wol(dev, useraddr);
+	//	rc = ethtool_get_value(dev, useraddr, ethcmd,
+	//					 dev->ethtool_ops->get_msglevel);
+	//	rc = ethtool_set_value_void(dev, useraddr,
+	//					 dev->ethtool_ops->set_msglevel);
+	//	if (!rc)
+	//		ethtool_notify(dev, ETHTOOL_MSG_DEBUG_NTF, NULL);
+	rc = ethtool_get_eee(dev, useraddr);
+	//	rc = ethtool_set_eee(dev, useraddr);
+	//	rc = ethtool_nway_reset(dev);
+	rc = ethtool_get_link(dev, useraddr);
+	rc = ethtool_get_eeprom(dev, useraddr);
+	//	rc = ethtool_set_eeprom(dev, useraddr);
+	// bug in vmxnet3_get_coalesce
+	//rc = ethtool_get_coalesce(dev, useraddr);
+	//	rc = ethtool_set_coalesce(dev, useraddr);
+	rc = ethtool_get_ringparam(dev, useraddr);
+	//	rc = ethtool_set_ringparam(dev, useraddr);
+	//	rc = ethtool_get_pauseparam(dev, useraddr);
+	//	rc = ethtool_set_pauseparam(dev, useraddr);
+	//	rc = ethtool_self_test(dev, useraddr);
+	rc = ethtool_get_strings(dev, useraddr);
+	//	rc = ethtool_phys_id(dev, useraddr);
+	rc = ethtool_get_stats(dev, useraddr);
+	rc = ethtool_get_perm_addr(dev, useraddr);
+	//	rc = ethtool_get_value(dev, useraddr, ethcmd,
+	//				__ethtool_get_flags);
+	//	rc = ethtool_set_value(dev, useraddr, __ethtool_set_flags);
+	//	rc = ethtool_get_value(dev, useraddr, ethcmd,
+	//					 dev->ethtool_ops->get_priv_flags);
+	//	if (!rc)
+	//		ethtool_notify(dev, ETHTOOL_MSG_PRIVFLAGS_NTF, NULL);
+	//	rc = ethtool_set_value(dev, useraddr,
+	//					 dev->ethtool_ops->set_priv_flags);
+	rc = ethtool_get_rxnfc(dev, ethcmd, useraddr);
+	//	rc = ethtool_set_rxnfc(dev, ethcmd, useraddr);
+	//	rc = ethtool_flash_device(dev, useraddr);
+	//	rc = ethtool_reset(dev, useraddr);
+	//	rc = ethtool_get_sset_info(dev, useraddr);
+	// vmxnet3bug
+	//rc = ethtool_get_rxfh_indir(dev, useraddr);
+	//	rc = ethtool_set_rxfh_indir(dev, useraddr);
+	// vmxnet3bug
+	//rc = ethtool_get_rxfh_indir(dev, useraddr);
+	//rc = ethtool_get_rxfh(dev, useraddr);
+	//	rc = ethtool_set_rxfh(dev, useraddr);
+	rc = ethtool_get_features(dev, useraddr);
+	rc = ethtool_set_features(dev, useraddr);
+	//	rc = ethtool_get_one_feature(dev, useraddr, ethcmd);
+	//	rc = ethtool_set_one_feature(dev, useraddr, ethcmd);
+	rc = ethtool_get_channels(dev, useraddr);
+	//	rc = ethtool_set_channels(dev, useraddr);
+	//	rc = ethtool_set_dump(dev, useraddr);
+	//	rc = ethtool_get_dump_flag(dev, useraddr);
+	//	rc = ethtool_get_dump_data(dev, useraddr);
+	rc = ethtool_get_ts_info(dev, useraddr);
+	rc = ethtool_get_module_info(dev, useraddr);
+	rc = ethtool_get_module_eeprom(dev, useraddr);
+	rc = ethtool_get_tunable(dev, useraddr);
+	//	rc = ethtool_set_tunable(dev, useraddr);
+	rc = ethtool_get_phy_stats(dev, useraddr);
+	//	rc = ethtool_set_per_queue(dev, useraddr, sub_cmd);
+	rc = ethtool_get_link_ksettings(dev, useraddr);
+	rc = ethtool_set_link_ksettings(dev, useraddr);
+	rc = get_phy_tunable(dev, useraddr);
+	//	rc = set_phy_tunable(dev, useraddr);
+	rc = ethtool_get_fecparam(dev, useraddr);
+	//	rc = ethtool_set_fecparam(dev, useraddr);
+
+	if (dev->ethtool_ops->complete)
+		dev->ethtool_ops->complete(dev);
+
+	if (old_features != dev->features)
+		netdev_features_change(dev);
+
+	return rc;
+
+}
 
 int dev_ethtool(struct net *net, struct ifreq *ifr)
 {

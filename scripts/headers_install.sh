@@ -93,7 +93,9 @@ include/uapi/linux/pktcdvd.h:CONFIG_CDROM_PKTCDVD_WCACHE
 
 for c in $configs
 do
-	leak_error=1
+   # Note(feli): this makes no sense for LKL,
+   # but we should find the right config option to deacitvate this
+	leak_error=0
 
 	for ignore in $config_leak_ignores
 	do

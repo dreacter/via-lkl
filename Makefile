@@ -506,6 +506,12 @@ KBUILD_LDFLAGS_MODULE :=
 KBUILD_LDFLAGS :=
 CLANG_FLAGS :=
 
+ifdef FUZZ
+KBUILD_CFLAGS_MODULE   +=  -fsanitize=fuzzer-no-link -fsanitize=address -fsanitize-recover=address
+KBUILD_AFLAGS_MODULE   +=  -fsanitize=fuzzer-no-link -fsanitize=address -fsanitize-recover=address
+KBUILD_LDFLAGS_MODULE  +=  -fsanitize=fuzzer-no-link -fsanitize=address -fsanitize-recover=address
+endif
+
 export ARCH SRCARCH CONFIG_SHELL BASH HOSTCC KBUILD_HOSTCFLAGS CROSS_COMPILE LD CC
 export CPP AR NM STRIP OBJCOPY OBJDUMP READELF PAHOLE RESOLVE_BTFIDS LEX YACC AWK INSTALLKERNEL
 export PERL PYTHON PYTHON3 CHECK CHECKFLAGS MAKE UTS_MACHINE HOSTCXX
@@ -1194,7 +1200,9 @@ archprepare: outputmakefile archheaders archscripts scripts include/config/kerne
 	include/generated/autoconf.h
 
 prepare0: archprepare
+ifeq ($(findstring elf,$(if $(CONFIG_OUTPUT_FORMAT),$(CONFIG_OUTPUT_FORMAT),elf)),elf)
 	$(Q)$(MAKE) $(build)=scripts/mod
+endif
 	$(Q)$(MAKE) $(build)=.
 
 # All the preparing..

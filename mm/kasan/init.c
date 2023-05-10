@@ -24,6 +24,7 @@
 
 #include "kasan.h"
 
+#if 0
 /*
  * This page serves two purposes:
  *   - It used as early shadow memory. The entire shadow region populated
@@ -492,3 +493,4 @@ int kasan_add_zero_shadow(void *start, unsigned long size)
 					size >> KASAN_SHADOW_SCALE_SHIFT);
 	return ret;
 }
+#endif

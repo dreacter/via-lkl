@@ -860,8 +860,19 @@ __SYSCALL(__NR_faccessat2, sys_faccessat2)
 #define __NR_process_madvise 440
 __SYSCALL(__NR_process_madvise, sys_process_madvise)
 
+// LKL FUZZING STUFF //////////////////////////////////////////////////////////
+#define __NR_init_loaded_module 441
+__SYSCALL(__NR_init_loaded_module, sys_init_loaded_module)
+#define __NR_uninit_loaded_module 442
+__SYSCALL(__NR_uninit_loaded_module, sys_uninit_loaded_module)
+#define __NR_fuzz_trigger_irq 443
+__SYSCALL(__NR_fuzz_trigger_irq, sys_fuzz_trigger_irq)
+#define __NR_fuzz_configure_dev 444
+__SYSCALL(__NR_fuzz_configure_dev, sys_fuzz_configure_dev)
+
+
 #undef __NR_syscalls
-#define __NR_syscalls 441
+#define __NR_syscalls 445
 
 /*
  * 32 bit systems traditionally used different

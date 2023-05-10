@@ -151,9 +151,43 @@ extern void swake_up_locked(struct swait_queue_head *q);
 extern void prepare_to_swait_exclusive(struct swait_queue_head *q, struct swait_queue *wait, int state);
 extern long prepare_to_swait_event(struct swait_queue_head *q, struct swait_queue *wait, int state);
 
+#if defined(MODULE) || defined(FUZZ_TRACE_WAIT)
+extern void __finish_swait_fuzz(struct swait_queue_head *q, struct swait_queue *wait);
+extern void finish_swait_fuzz(struct swait_queue_head *q, struct swait_queue *wait);
+#define __finish_swait __finish_swait_fuzz
+#define finish_swait finish_swait_fuzz
+#else
 extern void __finish_swait(struct swait_queue_head *q, struct swait_queue *wait);
 extern void finish_swait(struct swait_queue_head *q, struct swait_queue *wait);
+#endif
 
+#if defined(MODULE) || defined(FUZZ_TRACE_WAIT)
+/* as per ___wait_event() but for swait, therefore "exclusive == 1" */
+#define ___swait_event(wq, condition, state, ret, cmd)			\
+({									\
+	__label__ __out;						\
+	struct swait_queue __wait;					\
+	long __ret = ret;						\
+									\
+   lkl_ops->fuzz_ops->add_waiter(&__wait); \
+	INIT_LIST_HEAD(&__wait.task_list);				\
+	for (;;) {							\
+		long __int = prepare_to_swait_event(&wq, &__wait, state);\
+									\
+		if (condition)						\
+			break;						\
+									\
+		if (___wait_is_interruptible(state) && __int) {		\
+			__ret = __int;					\
+			goto __out;					\
+		}							\
+									\
+		cmd;							\
+	}								\
+	finish_swait(&wq, &__wait);					\
+__out:	__ret;								\
+})
+#else
 /* as per ___wait_event() but for swait, therefore "exclusive == 1" */
 #define ___swait_event(wq, condition, state, ret, cmd)			\
 ({									\
@@ -178,6 +212,7 @@ extern void finish_swait(struct swait_queue_head *q, struct swait_queue *wait);
 	finish_swait(&wq, &__wait);					\
 __out:	__ret;								\
 })
+#endif
 
 #define __swait_event(wq, condition)					\
 	(void)___swait_event(wq, condition, TASK_UNINTERRUPTIBLE, 0,	\

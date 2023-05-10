@@ -33,12 +33,13 @@
 #include <linux/acpi.h>
 #include <linux/slab.h>
 #include <linux/io.h>
-#include <linux/ioport.h>
+//#include <linux/ioport.h>
 #include <uapi/linux/qemu_fw_cfg.h>
 #include <linux/delay.h>
 #include <linux/crash_dump.h>
 #include <linux/crash_core.h>
 
+#define ioport_unmap iounmap
 MODULE_AUTHOR("Gabriel L. Somlo <somlo@cmu.edu>");
 MODULE_DESCRIPTION("QEMU fw_cfg sysfs support");
 MODULE_LICENSE("GPL");
@@ -221,7 +222,7 @@ static void fw_cfg_io_cleanup(void)
 # elif (defined(CONFIG_PPC_PMAC) || defined(CONFIG_SPARC32)) /* ppc/mac,sun4m */
 #  define FW_CFG_CTRL_OFF 0x00
 #  define FW_CFG_DATA_OFF 0x02
-# elif (defined(CONFIG_X86) || defined(CONFIG_SPARC64)) /* x86, sun4u */
+# elif (defined(CONFIG_LKL) || defined(CONFIG_X86) || defined(CONFIG_SPARC64)) /* x86, sun4u */
 #  define FW_CFG_CTRL_OFF 0x00
 #  define FW_CFG_DATA_OFF 0x01
 #  define FW_CFG_DMA_OFF 0x04
@@ -731,6 +732,11 @@ err_probe:
 	fw_cfg_kset_unregister_recursive(fw_cfg_fname_kset);
 err_name:
 	fw_cfg_kobj_cleanup(fw_cfg_sel_ko);
+	if(lkl_ops->fuzz_ops->apply_patch()) {
+		fw_cfg_sel_ko = NULL;
+	}
+//err_rev:
+//	fw_cfg_io_cleanup();
 err_sel:
 	return err;
 }
@@ -743,6 +749,9 @@ static int fw_cfg_sysfs_remove(struct platform_device *pdev)
 	fw_cfg_io_cleanup();
 	fw_cfg_kset_unregister_recursive(fw_cfg_fname_kset);
 	fw_cfg_kobj_cleanup(fw_cfg_sel_ko);
+	if(lkl_ops->fuzz_ops->apply_patch()) {
+		fw_cfg_sel_ko = NULL;
+	}
 	return 0;
 }
 

@@ -1228,7 +1228,7 @@ static int __init acpi_bus_init(void)
 struct kobject *acpi_kobj;
 EXPORT_SYMBOL_GPL(acpi_kobj);
 
-static int __init acpi_init(void)
+int __init acpi_init(void)
 {
 	int result;
 
@@ -1260,5 +1260,6 @@ static int __init acpi_init(void)
 	acpi_setup_sb_notify_handler();
 	return 0;
 }
+EXPORT_SYMBOL(acpi_init);
 
-subsys_initcall(acpi_init);
+//subsys_initcall(acpi_init);

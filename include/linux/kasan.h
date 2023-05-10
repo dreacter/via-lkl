@@ -11,8 +11,9 @@ struct task_struct;
 
 #ifdef CONFIG_KASAN
 
-#include <linux/pgtable.h>
+//#include <linux/pgtable.h>
 #include <asm/kasan.h>
+#include <asm/kasan_asan.h>
 
 /* kasan_data struct is used in KUnit tests for KASAN expected failures */
 struct kunit_kasan_expectation {
@@ -20,6 +21,7 @@ struct kunit_kasan_expectation {
 	bool report_found;
 };
 
+#if 0
 extern unsigned char kasan_early_shadow_page[PAGE_SIZE];
 extern pte_t kasan_early_shadow_pte[PTRS_PER_PTE];
 extern pmd_t kasan_early_shadow_pmd[PTRS_PER_PMD];
@@ -28,11 +30,18 @@ extern p4d_t kasan_early_shadow_p4d[MAX_PTRS_PER_P4D];
 
 int kasan_populate_early_shadow(const void *shadow_start,
 				const void *shadow_end);
+#endif
 
+// Note(feli): __asan_MemToShadow is exported by llvm
+// we forward all shadow memory modifications to the
+// llvm region
 static inline void *kasan_mem_to_shadow(const void *addr)
 {
+#if 0
 	return (void *)((unsigned long)addr >> KASAN_SHADOW_SCALE_SHIFT)
 		+ KASAN_SHADOW_OFFSET;
+#endif
+	return (void*)__asan_MemToShadow((unsigned long)addr);
 }
 
 /* Enable reporting bugs after kasan_disable_current() */

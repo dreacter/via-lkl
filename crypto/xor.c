@@ -14,6 +14,7 @@
 #include <linux/raid/xor.h>
 #include <linux/jiffies.h>
 #include <linux/preempt.h>
+#include <linux/cpu.h>
 #include <asm/xor.h>
 
 #ifndef XOR_SELECT_TEMPLATE

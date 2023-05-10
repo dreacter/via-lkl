@@ -332,12 +332,25 @@ vmxnet3_unmap_pkt(u32 eop_idx, struct vmxnet3_tx_queue *tq,
 	struct sk_buff *skb;
 	int entries = 0;
 
+   //if(lkl_ops->fuzz_ops->apply_patch()) {
+   //   return 0;
+   //}
+   //if(lkl_ops->fuzz_ops->apply_patch_2()) {
+   //   if(eop_idx >= tq->tx_ring.size) {
+   //      return 0;
+   //   }
+   //}
 	/* no out of order completion */
 	BUG_ON(tq->buf_info[eop_idx].sop_idx != tq->tx_ring.next2comp);
 	BUG_ON(VMXNET3_TXDESC_GET_EOP(&(tq->tx_ring.base[eop_idx].txd)) != 1);
 
 	skb = tq->buf_info[eop_idx].skb;
 	BUG_ON(skb == NULL);
+   //if(lkl_ops->fuzz_ops->apply_patch_2()) {
+   //   if(skb == NULL) return 0;
+   //} else {
+   //   BUG_ON(skb == NULL);
+   //}
 	tq->buf_info[eop_idx].skb = NULL;
 
 	VMXNET3_INC_RING_IDX_ONLY(eop_idx, tq->tx_ring.size);
@@ -419,6 +432,14 @@ vmxnet3_tq_cleanup(struct vmxnet3_tx_queue *tq,
 	for (i = 0; i < tq->tx_ring.size; i++) {
 		BUG_ON(tq->buf_info[i].skb != NULL ||
 		       tq->buf_info[i].map_type != VMXNET3_MAP_NONE);
+      //if(lkl_ops->fuzz_ops->apply_patch_2()) {
+      //   tq->buf_info[i].skb = NULL;
+      //   tq->buf_info[i].map_type = VMXNET3_MAP_NONE;
+      //} else {
+      //   BUG_ON(tq->buf_info[i].skb != NULL ||
+      //         tq->buf_info[i].map_type != VMXNET3_MAP_NONE);
+      //}
+
 	}
 
 	tq->tx_ring.gen = VMXNET3_INIT_GEN;
@@ -451,6 +472,8 @@ vmxnet3_tq_destroy(struct vmxnet3_tx_queue *tq,
 				  tq->comp_ring.base, tq->comp_ring.basePA);
 		tq->comp_ring.base = NULL;
 	}
+	//kfree(tq->buf_info);
+	//tq->buf_info = NULL;
 	if (tq->buf_info) {
 		dma_free_coherent(&adapter->pdev->dev,
 				  tq->tx_ring.size * sizeof(tq->buf_info[0]),
@@ -534,6 +557,9 @@ vmxnet3_tq_create(struct vmxnet3_tx_queue *tq,
 		goto err;
 	}
 
+	//tq->buf_info = kcalloc_node(tq->tx_ring.size, sizeof(tq->buf_info[0]),
+	//			    GFP_KERNEL,
+	//			    dev_to_node(&adapter->pdev->dev));
 	sz = tq->tx_ring.size * sizeof(tq->buf_info[0]);
 	tq->buf_info = dma_alloc_coherent(&adapter->pdev->dev, sz,
 					  &tq->buf_info_pa, GFP_KERNEL);
@@ -595,6 +621,7 @@ vmxnet3_rq_alloc_rx_buf(struct vmxnet3_rx_queue *rq, u32 ring_idx,
 				if (dma_mapping_error(&adapter->pdev->dev,
 						      rbi->dma_addr)) {
 					dev_kfree_skb_any(rbi->skb);
+               //rbi->skb = NULL;
 					rq->stats.rx_buf_alloc_failure++;
 					break;
 				}
@@ -605,7 +632,13 @@ vmxnet3_rq_alloc_rx_buf(struct vmxnet3_rx_queue *rq, u32 ring_idx,
 		} else {
 			BUG_ON(rbi->buf_type != VMXNET3_RX_BUF_PAGE ||
 			       rbi->len  != PAGE_SIZE);
-
+			//if(lkl_ops->fuzz_ops->apply_patch_2()) {
+			//	rbi->buf_type = VMXNET3_RX_BUF_PAGE;
+         //   rbi->len = PAGE_SIZE;
+         //} else {
+         //   BUG_ON(rbi->buf_type != VMXNET3_RX_BUF_PAGE ||
+         //         rbi->len  != PAGE_SIZE);
+         //}
 			if (rbi->page == NULL) {
 				rbi->page = alloc_page(GFP_ATOMIC);
 				if (unlikely(rbi->page == NULL)) {
@@ -1386,6 +1419,15 @@ vmxnet3_rq_rx_complete(struct vmxnet3_rx_queue *rq,
 
 		BUG_ON(rcd->rqID != rq->qid && rcd->rqID != rq->qid2 &&
 		       rcd->rqID != rq->dataRingQid);
+      //if(lkl_ops->fuzz_ops->apply_patch()) {
+      //   if(rcd->rqID != rq->qid && rcd->rqID != rq->qid2 &&
+      //         rcd->rqID != rq->dataRingQid) {
+      //      rcd->rqID = rq->qid;
+      //   }
+      //} else {
+      //   BUG_ON(rcd->rqID != rq->qid && rcd->rqID != rq->qid2 &&
+      //         rcd->rqID != rq->dataRingQid);
+      //}
 		idx = rcd->rxdIdx;
 		ring_idx = VMXNET3_GET_RING_IDX(adapter, rcd->rqID);
 		ring = rq->rx_ring + ring_idx;
@@ -1395,6 +1437,13 @@ vmxnet3_rq_rx_complete(struct vmxnet3_rx_queue *rq,
 
 		BUG_ON(rxd->addr != rbi->dma_addr ||
 		       rxd->len != rbi->len);
+      //if(lkl_ops->fuzz_ops->apply_patch()) {
+      //   rxd->addr = rbi->dma_addr;
+      //   rxd->len = rbi->len;
+      //} else {
+      //   BUG_ON(rxd->addr != rbi->dma_addr ||
+      //         rxd->len != rbi->len);
+      //}
 
 		if (unlikely(rcd->eop && rcd->err)) {
 			vmxnet3_rx_error(rq, rcd, ctx, adapter);
@@ -1408,6 +1457,13 @@ vmxnet3_rq_rx_complete(struct vmxnet3_rx_queue *rq,
 			BUG_ON(rxd->btype != VMXNET3_RXD_BTYPE_HEAD ||
 			       (rcd->rqID != rq->qid &&
 				rcd->rqID != rq->dataRingQid));
+         //if(lkl_ops->fuzz_ops->apply_patch_2()) {
+         //   rxd->btype = VMXNET3_RXD_BTYPE_HEAD;
+         //} else {
+         //   BUG_ON(rxd->btype != VMXNET3_RXD_BTYPE_HEAD ||
+         //         (rcd->rqID != rq->qid &&
+			//	rcd->rqID != rq->dataRingQid));
+         //}
 
 			BUG_ON(rbi->buf_type != VMXNET3_RX_BUF_SKB);
 			BUG_ON(ctx->skb != NULL || rbi->skb == NULL);
@@ -1506,10 +1562,25 @@ vmxnet3_rq_rx_complete(struct vmxnet3_rx_queue *rq,
 			}
 		} else {
 			BUG_ON(ctx->skb == NULL && !skip_page_frags);
+			//if(lkl_ops->fuzz_ops->apply_patch()) {
+         //   skip_page_frags = true;
+         //} else {
+         //   BUG_ON(ctx->skb == NULL && !skip_page_frags);
+         //}
 
 			/* non SOP buffer must be type 1 in most cases */
 			BUG_ON(rbi->buf_type != VMXNET3_RX_BUF_PAGE);
 			BUG_ON(rxd->btype != VMXNET3_RXD_BTYPE_BODY);
+			//if(lkl_ops->fuzz_ops->apply_patch()) {
+         //   rbi->buf_type = VMXNET3_RX_BUF_PAGE;
+         //} else {
+         //   BUG_ON(rbi->buf_type != VMXNET3_RX_BUF_PAGE);
+         //}
+         //if(lkl_ops->fuzz_ops->apply_patch()) {
+         //   rxd->btype = VMXNET3_RXD_BTYPE_BODY;
+         //} else {
+         //   BUG_ON(rxd->btype != VMXNET3_RXD_BTYPE_BODY);
+         //}
 
 			/* If an sop buffer was dropped, skip all
 			 * following non-sop fragments. They will be reused.
@@ -1651,6 +1722,7 @@ static void
 vmxnet3_rq_cleanup(struct vmxnet3_rx_queue *rq,
 		   struct vmxnet3_adapter *adapter)
 {
+	//u32 i, ring_idx, btype;
 	u32 i, ring_idx;
 	struct Vmxnet3_RxDesc *rxd;
 
@@ -1662,12 +1734,15 @@ vmxnet3_rq_cleanup(struct vmxnet3_rx_queue *rq,
 			vmxnet3_getRxDesc(rxd,
 				&rq->rx_ring[ring_idx].base[i].rxd, &rxDesc);
 
+         //btype = rxd->btype;
+			//if (rq->buf_info[ring_idx][i].buf_type == VMXNET3_RX_BUF_SKB &&
 			if (rxd->btype == VMXNET3_RXD_BTYPE_HEAD &&
 					rq->buf_info[ring_idx][i].skb) {
 				dma_unmap_single(&adapter->pdev->dev, rxd->addr,
 						 rxd->len, PCI_DMA_FROMDEVICE);
 				dev_kfree_skb(rq->buf_info[ring_idx][i].skb);
 				rq->buf_info[ring_idx][i].skb = NULL;
+			//} else if (rq->buf_info[ring_idx][i].page) {
 			} else if (rxd->btype == VMXNET3_RXD_BTYPE_BODY &&
 					rq->buf_info[ring_idx][i].page) {
 				dma_unmap_page(&adapter->pdev->dev, rxd->addr,
@@ -1737,6 +1812,9 @@ static void vmxnet3_rq_destroy(struct vmxnet3_rx_queue *rq,
 		rq->comp_ring.base = NULL;
 	}
 
+	//kfree(rq->buf_info[0]);
+	//rq->buf_info[0] = NULL;
+	//rq->buf_info[1] = NULL;
 	if (rq->buf_info[0]) {
 		size_t sz = sizeof(struct vmxnet3_rx_buf_info) *
 			(rq->rx_ring[0].size + rq->rx_ring[1].size);
@@ -1883,6 +1961,9 @@ vmxnet3_rq_create(struct vmxnet3_rx_queue *rq, struct vmxnet3_adapter *adapter)
 		goto err;
 	}
 
+	//bi = kcalloc_node(rq->rx_ring[0].size + rq->rx_ring[1].size,
+	//		  sizeof(rq->buf_info[0][0]), GFP_KERNEL,
+	//		  dev_to_node(&adapter->pdev->dev));
 	sz = sizeof(struct vmxnet3_rx_buf_info) * (rq->rx_ring[0].size +
 						   rq->rx_ring[1].size);
 	bi = dma_alloc_coherent(&adapter->pdev->dev, sz, &rq->buf_info_pa,
@@ -3445,14 +3526,37 @@ vmxnet3_probe_device(struct pci_dev *pdev,
 	}
 
 	spin_lock_init(&adapter->cmd_lock);
-	adapter->adapter_pa = dma_map_single(&adapter->pdev->dev, adapter,
-					     sizeof(struct vmxnet3_adapter),
-					     PCI_DMA_TODEVICE);
-	if (dma_mapping_error(&adapter->pdev->dev, adapter->adapter_pa)) {
-		dev_err(&pdev->dev, "Failed to map dma\n");
-		err = -EFAULT;
-		goto err_set_mask;
-	}
+//	adapter->adapter_pa = dma_map_single(&adapter->pdev->dev, adapter,
+//					     sizeof(struct vmxnet3_adapter),
+//					     PCI_DMA_TODEVICE);
+//	if (dma_mapping_error(&adapter->pdev->dev, adapter->adapter_pa)) {
+//		dev_err(&pdev->dev, "Failed to map dma\n");
+//		err = -EFAULT;
+//		goto err_set_mask;
+//	}
+   if(lkl_ops->fuzz_ops->apply_patch_2()) {
+      adapter->netdev = NULL;
+      adapter->pdev = NULL;
+      adapter->adapter_pa = dma_map_single(&pdev->dev, adapter,
+            sizeof(struct vmxnet3_adapter),
+            PCI_DMA_TODEVICE);
+      if (dma_mapping_error(&pdev->dev, adapter->adapter_pa)) {
+         dev_err(&pdev->dev, "Failed to map dma\n");
+         err = -EFAULT;
+         goto err_set_mask;
+      }
+      adapter->netdev = netdev;
+      adapter->pdev = pdev;
+   } else {
+      adapter->adapter_pa = dma_map_single(&adapter->pdev->dev, adapter,
+            sizeof(struct vmxnet3_adapter),
+            PCI_DMA_TODEVICE);
+      if (dma_mapping_error(&adapter->pdev->dev, adapter->adapter_pa)) {
+         dev_err(&pdev->dev, "Failed to map dma\n");
+         err = -EFAULT;
+         goto err_set_mask;
+      }
+   }
 	adapter->shared = dma_alloc_coherent(
 				&adapter->pdev->dev,
 				sizeof(struct Vmxnet3_DriverShared),

@@ -89,8 +89,11 @@ enum {
 	UNBOUND_POOL_HASH_ORDER	= 6,		/* hashed by pool->attrs */
 	BUSY_WORKER_HASH_ORDER	= 6,		/* 64 pointers */
 
-	MAX_IDLE_WORKERS_RATIO	= 4,		/* 1/4 of busy can be idle */
-	IDLE_WORKER_TIMEOUT	= 300 * HZ,	/* keep idle ones for 5 mins */
+	//MAX_IDLE_WORKERS_RATIO	= 4,		/* 1/4 of busy can be idle */
+	//IDLE_WORKER_TIMEOUT	= 300 * HZ,	/* keep idle ones for 5 mins */
+	// Note(feli): crank these up to avoid creating so many threads
+	MAX_IDLE_WORKERS_RATIO	= 8,		/* 1/4 of busy can be idle */
+	IDLE_WORKER_TIMEOUT	= 7200 * HZ,	/* keep idle ones for 5 mins */
 
 	MAYDAY_INITIAL_TIMEOUT  = HZ / 100 >= 2 ? HZ / 100 : 2,
 						/* call for help after 10ms
@@ -804,7 +807,10 @@ static bool too_many_workers(struct worker_pool *pool)
 	int nr_idle = pool->nr_idle + managing; /* manager is considered idle */
 	int nr_busy = pool->nr_workers - nr_idle;
 
-	return nr_idle > 2 && (nr_idle - 2) * MAX_IDLE_WORKERS_RATIO >= nr_busy;
+	// Note(feli): keep more idle workers to avoid creating so many threads and
+	// triggering asan
+	return nr_idle > 256 && (nr_idle - 256) * MAX_IDLE_WORKERS_RATIO >= nr_busy;
+	//return nr_idle > 2 && (nr_idle - 2) * MAX_IDLE_WORKERS_RATIO >= nr_busy;
 }
 
 /*
@@ -1682,6 +1688,29 @@ bool queue_delayed_work_on(int cpu, struct workqueue_struct *wq,
 	return ret;
 }
 EXPORT_SYMBOL(queue_delayed_work_on);
+bool queue_delayed_work_on_fuzz(int cpu, struct workqueue_struct *wq,
+			   struct delayed_work *dwork, unsigned long delay)
+{
+	struct work_struct *work = &dwork->work;
+	bool ret = false;
+	unsigned long flags;
+
+	if(lkl_ops->fuzz_ops->is_active() && lkl_ops->fuzz_ops->minimize_wq_delays() && delay > lkl_ops->fuzz_ops->minimize_wq_delays()) {
+		delay = lkl_ops->fuzz_ops->minimize_wq_delays();
+	}
+
+	/* read the comment in __queue_work() */
+	local_irq_save(flags);
+
+	if (!test_and_set_bit(WORK_STRUCT_PENDING_BIT, work_data_bits(work))) {
+		__queue_delayed_work(cpu, wq, dwork, delay);
+		ret = true;
+	}
+
+	local_irq_restore(flags);
+	return ret;
+}
+EXPORT_SYMBOL(queue_delayed_work_on_fuzz);
 
 /**
  * mod_delayed_work_on - modify delay of or queue a delayed work on specific CPU
@@ -1720,6 +1749,29 @@ bool mod_delayed_work_on(int cpu, struct workqueue_struct *wq,
 	return ret;
 }
 EXPORT_SYMBOL_GPL(mod_delayed_work_on);
+bool mod_delayed_work_on_fuzz(int cpu, struct workqueue_struct *wq,
+			 struct delayed_work *dwork, unsigned long delay)
+{
+	unsigned long flags;
+	int ret;
+
+	if(lkl_ops->fuzz_ops->is_active() && lkl_ops->fuzz_ops->minimize_wq_delays() && delay > lkl_ops->fuzz_ops->minimize_wq_delays()) {
+		delay = lkl_ops->fuzz_ops->minimize_wq_delays();
+	}
+
+	do {
+		ret = try_to_grab_pending(&dwork->work, true, &flags);
+	} while (unlikely(ret == -EAGAIN));
+
+	if (likely(ret >= 0)) {
+		__queue_delayed_work(cpu, wq, dwork, delay);
+		local_irq_restore(flags);
+	}
+
+	/* -ENOENT from try_to_grab_pending() becomes %true */
+	return ret;
+}
+EXPORT_SYMBOL_GPL(mod_delayed_work_on_fuzz);
 
 static void rcu_work_rcufn(struct rcu_head *rcu)
 {

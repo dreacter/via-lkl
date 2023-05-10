@@ -785,6 +785,8 @@ int __sysfs_match_string(const char * const *array, size_t n, const char *str)
 }
 EXPORT_SYMBOL(__sysfs_match_string);
 
+// Note(feli): this causes problems with asan, have to use glibc memset
+#if 0
 #ifndef __HAVE_ARCH_MEMSET
 /**
  * memset - Fill a region of memory with the given value
@@ -803,6 +805,7 @@ void *memset(void *s, int c, size_t count)
 	return s;
 }
 EXPORT_SYMBOL(memset);
+#endif
 #endif
 
 #ifndef __HAVE_ARCH_MEMSET16

@@ -37,6 +37,7 @@
 					     __GFP_NOMEMALLOC)
 /* The order of free page blocks to report to host */
 #define VIRTIO_BALLOON_HINT_BLOCK_ORDER (MAX_ORDER - 1)
+//#define VIRTIO_BALLOON_HINT_BLOCK_ORDER 2
 /* The size of a free page block in bytes */
 #define VIRTIO_BALLOON_HINT_BLOCK_BYTES \
 	(1 << (VIRTIO_BALLOON_HINT_BLOCK_ORDER + PAGE_SHIFT))
@@ -149,6 +150,16 @@ static void balloon_ack(struct virtqueue *vq)
 	wake_up(&vb->acked);
 }
 
+static bool vq_get_or_broken(struct virtqueue *vq, int *len) {
+	void *ret;
+   if(virtqueue_is_broken(vq)) return false;
+	ret = virtqueue_get_buf(vq, len);
+	if(ret) {// || virtqueue_is_broken(vq)) {
+		return true;
+	}
+	return false;
+}
+
 static void tell_host(struct virtio_balloon *vb, struct virtqueue *vq)
 {
 	struct scatterlist sg;
@@ -161,8 +172,17 @@ static void tell_host(struct virtio_balloon *vb, struct virtqueue *vq)
 	virtqueue_kick(vq);
 
 	/* When host has read buffer, this completes via balloon_ack */
-	wait_event(vb->acked, virtqueue_get_buf(vq, &len));
-
+	// Patch(feli): the virtqueues might be broken which leads to a deadlock here
+	// Note(feli): alternatively one could also wrap the kernel waitqueue interface
+	// in order to forcefully cancel these, but I guess such deadlocks are technically
+	// bugs to patching them is probably the better way
+	if(lkl_ops->fuzz_ops->apply_patch()) {
+      if(vq_get_or_broken(vq, &len)) {
+         wait_event(vb->acked, true);
+      }
+	} else {
+		wait_event(vb->acked, virtqueue_get_buf(vq, &len));
+	}
 }
 
 static int virtballoon_free_page_report(struct page_reporting_dev_info *pr_dev_info,
@@ -187,7 +207,14 @@ static int virtballoon_free_page_report(struct page_reporting_dev_info *pr_dev_i
 	virtqueue_kick(vq);
 
 	/* When host has read buffer, this completes via balloon_ack */
-	wait_event(vb->acked, virtqueue_get_buf(vq, &unused));
+	if(lkl_ops->fuzz_ops->apply_patch()) {
+      if(vq_get_or_broken(vq, &unused)) {
+         wait_event(vb->acked, true);
+      }
+		//wait_event(vb->acked, vq_get_or_broken(vq, &unused));
+	} else {
+		wait_event(vb->acked, virtqueue_get_buf(vq, &unused));
+	}
 
 	return 0;
 }
@@ -372,8 +399,9 @@ static void stats_request(struct virtqueue *vq)
 	struct virtio_balloon *vb = vq->vdev->priv;
 
 	spin_lock(&vb->stop_update_lock);
-	if (!vb->stop_update)
+	if (!vb->stop_update) {
 		queue_work(system_freezable_wq, &vb->update_balloon_stats_work);
+   }
 	spin_unlock(&vb->stop_update_lock);
 }
 
@@ -403,6 +431,14 @@ static inline s64 towards_target(struct virtio_balloon *vb)
 			&num_pages);
 
 	target = num_pages;
+	if(lkl_ops->fuzz_ops->apply_patch()) {
+		if(vb->num_pages > target && vb->num_pages - target > 16) {
+			return -16;
+		}
+		if(vb->num_pages < target && target - vb->num_pages > 16) {
+			return 16;
+		}
+	}
 	return target - vb->num_pages;
 }
 
@@ -490,8 +526,9 @@ static void update_balloon_size_func(struct work_struct *work)
 		diff += leak_balloon(vb, -diff);
 	update_balloon_size(vb);
 
-	if (diff)
+	if (diff) {
 		queue_work(system_freezable_wq, work);
+   }
 }
 
 static int init_vqs(struct virtio_balloon *vb)
@@ -665,6 +702,7 @@ static int get_free_page_and_send(struct virtio_balloon *vb)
 	return 0;
 }
 
+void lkl_cpu_preempt(void);
 static int send_free_pages(struct virtio_balloon *vb)
 {
 	int err;
@@ -689,6 +727,14 @@ static int send_free_pages(struct virtio_balloon *vb)
 			break;
 		else if (unlikely(err))
 			return err;
+
+		// Note(feli): we need to give up the CPU at some point
+		if(lkl_ops->fuzz_ops->apply_patch()) {
+			if(vb->stop_update)
+				break;
+			cpu_relax();
+         lkl_cpu_preempt();
+		}
 	}
 
 	return 0;
@@ -953,7 +999,7 @@ static int virtballoon_probe(struct virtio_device *vdev)
 		err = virtio_balloon_register_shrinker(vb);
 		if (err)
 			goto out_del_balloon_wq;
-	}
+   }
 
 	if (virtio_has_feature(vb->vdev, VIRTIO_BALLOON_F_DEFLATE_ON_OOM)) {
 		vb->oom_nb.notifier_call = virtio_balloon_oom_notify;
@@ -961,7 +1007,7 @@ static int virtballoon_probe(struct virtio_device *vdev)
 		err = register_oom_notifier(&vb->oom_nb);
 		if (err < 0)
 			goto out_unregister_shrinker;
-	}
+   }
 
 	if (virtio_has_feature(vdev, VIRTIO_BALLOON_F_PAGE_POISON)) {
 		/* Start with poison val of 0 representing general init */
@@ -1014,6 +1060,9 @@ out_del_balloon_wq:
 	if (virtio_has_feature(vdev, VIRTIO_BALLOON_F_FREE_PAGE_HINT))
 		destroy_workqueue(vb->balloon_wq);
 out_iput:
+	if(lkl_ops->fuzz_ops->apply_patch_2()) {
+		cancel_work_sync(&vb->update_balloon_size_work);
+	}
 #ifdef CONFIG_BALLOON_COMPACTION
 	iput(vb->vb_dev_info.inode);
 out_kern_unmount:

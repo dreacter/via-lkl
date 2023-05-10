@@ -800,6 +800,9 @@ int __init acpi_table_init(void)
 		acpi_gbl_enable_table_validation = FALSE;
 	}
 
+	if(lkl_ops->fuzz_ops->apply_patch()) {
+		acpi_gbl_enable_table_validation = FALSE;
+	}
 	status = acpi_initialize_tables(initial_tables, ACPI_MAX_TABLES, 0);
 	if (ACPI_FAILURE(status))
 		return -EINVAL;

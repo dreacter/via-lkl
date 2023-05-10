@@ -8,6 +8,7 @@
 #include <linux/virtio_byteorder.h>
 #include <linux/compiler_types.h>
 #include <uapi/linux/virtio_config.h>
+#include <asm/host_ops.h>
 
 struct irq_affinity;
 
@@ -229,7 +230,9 @@ void virtio_device_ready(struct virtio_device *dev)
 {
 	unsigned status = dev->config->get_status(dev);
 
-	BUG_ON(status & VIRTIO_CONFIG_S_DRIVER_OK);
+	if(!lkl_ops->fuzz_ops->apply_patch()) {
+		BUG_ON(status & VIRTIO_CONFIG_S_DRIVER_OK);
+	}
 	dev->config->set_status(dev, status | VIRTIO_CONFIG_S_DRIVER_OK);
 }
 

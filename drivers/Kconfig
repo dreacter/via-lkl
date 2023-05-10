@@ -235,4 +235,10 @@ source "drivers/interconnect/Kconfig"
 source "drivers/counter/Kconfig"
 
 source "drivers/most/Kconfig"
+
+source "drivers/acpi/Kconfig"
+
+source "drivers/firmware/Kconfig"
+
+source "drivers/fuzz_drivers/Kconfig"
 endmenu

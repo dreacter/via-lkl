@@ -240,22 +240,24 @@ static inline bool virtqueue_use_indirect(struct virtqueue *_vq,
 
 static bool vring_use_dma_api(struct virtio_device *vdev)
 {
-	if (!virtio_has_dma_quirk(vdev))
-		return true;
+   // Note(feli): Always use dma api
+   return true;
+	//if (!virtio_has_dma_quirk(vdev))
+	//	return true;
 
-	/* Otherwise, we are left to guess. */
-	/*
-	 * In theory, it's possible to have a buggy QEMU-supposed
-	 * emulated Q35 IOMMU and Xen enabled at the same time.  On
-	 * such a configuration, virtio has never worked and will
-	 * not work without an even larger kludge.  Instead, enable
-	 * the DMA API if we're a Xen guest, which at least allows
-	 * all of the sensible Xen configurations to work correctly.
-	 */
-	if (xen_domain())
-		return true;
+	///* Otherwise, we are left to guess. */
+	///*
+	// * In theory, it's possible to have a buggy QEMU-supposed
+	// * emulated Q35 IOMMU and Xen enabled at the same time.  On
+	// * such a configuration, virtio has never worked and will
+	// * not work without an even larger kludge.  Instead, enable
+	// * the DMA API if we're a Xen guest, which at least allows
+	// * all of the sensible Xen configurations to work correctly.
+	// */
+	//if (xen_domain())
+	//	return true;
 
-	return false;
+	//return false;
 }
 
 size_t virtio_max_dma_size(struct virtio_device *vdev)
@@ -273,8 +275,9 @@ static void *vring_alloc_queue(struct virtio_device *vdev, size_t size,
 			      dma_addr_t *dma_handle, gfp_t flag)
 {
 	if (vring_use_dma_api(vdev)) {
-		return dma_alloc_coherent(vdev->dev.parent, size,
+		void *ret = dma_alloc_coherent(vdev->dev.parent, size,
 					  dma_handle, flag);
+      return ret;
 	} else {
 		void *queue = alloc_pages_exact(PAGE_ALIGN(size), flag);
 
@@ -836,7 +839,9 @@ static void *virtqueue_detach_unused_buf_split(struct virtqueue *_vq)
 		return buf;
 	}
 	/* That should have freed everything. */
-	BUG_ON(vq->vq.num_free != vq->split.vring.num);
+   if(!lkl_ops->fuzz_ops->apply_patch()) {
+      BUG_ON(vq->vq.num_free != vq->split.vring.num);
+   }
 
 	END_USE(vq);
 	return NULL;
@@ -1608,7 +1613,9 @@ static struct virtqueue *vring_create_virtqueue_packed(
 	vq->num_added = 0;
 	vq->packed_ring = true;
 	vq->use_dma_api = vring_use_dma_api(vdev);
-	list_add_tail(&vq->vq.list, &vdev->vqs);
+	if(!lkl_ops->fuzz_ops->apply_patch_2()) {
+		list_add_tail(&vq->vq.list, &vdev->vqs);
+	}
 #ifdef DEBUG
 	vq->in_use = false;
 	vq->last_add_time_valid = false;
@@ -1669,6 +1676,9 @@ static struct virtqueue *vring_create_virtqueue_packed(
 			cpu_to_le16(vq->packed.event_flags_shadow);
 	}
 
+	if(lkl_ops->fuzz_ops->apply_patch_2()) {
+		list_add_tail(&vq->vq.list, &vdev->vqs);
+	}
 	return &vq->vq;
 
 err_desc_extra:
@@ -2044,7 +2054,7 @@ irqreturn_t vring_interrupt(int irq, void *_vq)
 	if (unlikely(vq->broken))
 		return IRQ_HANDLED;
 
-	pr_debug("virtqueue callback for %p (%p)\n", vq, vq->vq.callback);
+	pr_err("virtqueue callback for %llx (%llx)\n", (uint64_t)vq, (uint64_t)vq->vq.callback);
 	if (vq->vq.callback)
 		vq->vq.callback(&vq->vq);
 
@@ -2085,7 +2095,9 @@ struct virtqueue *__vring_new_virtqueue(unsigned int index,
 	vq->last_used_idx = 0;
 	vq->num_added = 0;
 	vq->use_dma_api = vring_use_dma_api(vdev);
-	list_add_tail(&vq->vq.list, &vdev->vqs);
+	if(!lkl_ops->fuzz_ops->apply_patch_2()) {
+		list_add_tail(&vq->vq.list, &vdev->vqs);
+	}
 #ifdef DEBUG
 	vq->in_use = false;
 	vq->last_add_time_valid = false;
@@ -2127,6 +2139,9 @@ struct virtqueue *__vring_new_virtqueue(unsigned int index,
 	memset(vq->split.desc_state, 0, vring.num *
 			sizeof(struct vring_desc_state_split));
 
+	if(lkl_ops->fuzz_ops->apply_patch_2()) {
+		list_add_tail(&vq->vq.list, &vdev->vqs);
+	}
 	return &vq->vq;
 }
 EXPORT_SYMBOL_GPL(__vring_new_virtqueue);
@@ -2287,8 +2302,9 @@ dma_addr_t virtqueue_get_desc_addr(struct virtqueue *_vq)
 
 	BUG_ON(!vq->we_own_ring);
 
-	if (vq->packed_ring)
+	if (vq->packed_ring) {
 		return vq->packed.ring_dma_addr;
+   }
 
 	return vq->split.queue_dma_addr;
 }

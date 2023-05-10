@@ -109,10 +109,10 @@ static void skb_panic(struct sk_buff *skb, unsigned int sz, void *addr,
 	BUG();
 }
 
-static void skb_over_panic(struct sk_buff *skb, unsigned int sz, void *addr)
-{
-	skb_panic(skb, sz, addr, __func__);
-}
+//static void skb_over_panic(struct sk_buff *skb, unsigned int sz, void *addr)
+//{
+//	skb_panic(skb, sz, addr, __func__);
+//}
 
 static void skb_under_panic(struct sk_buff *skb, unsigned int sz, void *addr)
 {
@@ -1852,12 +1852,30 @@ EXPORT_SYMBOL_GPL(pskb_put);
  */
 void *skb_put(struct sk_buff *skb, unsigned int len)
 {
+	unsigned int old_len = 0;
+   unsigned char *old_tail = NULL;
 	void *tmp = skb_tail_pointer(skb);
 	SKB_LINEAR_ASSERT(skb);
+#if 0
 	skb->tail += len;
 	skb->len  += len;
 	if (unlikely(skb->tail > skb->end))
 		skb_over_panic(skb, len, __builtin_return_address(0));
+#else
+	old_tail = skb_tail_pointer(skb);
+	skb->tail += len;
+	old_len = skb->len;
+	skb->len  += len;
+	if (unlikely(skb->tail > skb->end)) {
+		//skb_over_panic(skb, len, __builtin_return_address(0));
+		skb->len -= (skb->tail - skb->end);
+		skb->tail = skb->end;
+		tmp = skb_tail_pointer(skb);
+		pr_err("Warning: skb_over_panic adjusting tail %llx -> %llx, len %d -> %d\n",
+				(uint64_t)old_tail, (uint64_t)tmp, old_len + len, skb->len);
+	}
+#endif
+
 	return tmp;
 }
 EXPORT_SYMBOL(skb_put);

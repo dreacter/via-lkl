@@ -297,7 +297,7 @@ static acpi_status __init pnpacpi_add_device_handler(acpi_handle handle,
 }
 
 int pnpacpi_disabled __initdata;
-static int __init pnpacpi_init(void)
+int __init pnpacpi_init(void)
 {
 	if (acpi_disabled || pnpacpi_disabled) {
 		printk(KERN_INFO "pnp: PnP ACPI: disabled\n");
@@ -310,8 +310,9 @@ static int __init pnpacpi_init(void)
 	pnp_platform_devices = 1;
 	return 0;
 }
+EXPORT_SYMBOL(pnpacpi_init);
 
-fs_initcall(pnpacpi_init);
+//fs_initcall(pnpacpi_init);
 
 static int __init pnpacpi_setup(char *str)
 {

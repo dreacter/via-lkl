@@ -64,14 +64,17 @@ const struct exception_table_entry *search_exception_tables(unsigned long addr)
 
 int init_kernel_text(unsigned long addr)
 {
+   pr_err("%lx %lx-%lx\n", addr, (unsigned long)_sinittext, (unsigned long)_einittext);
 	if (addr >= (unsigned long)_sinittext &&
 	    addr < (unsigned long)_einittext)
 		return 1;
 	return 0;
 }
+EXPORT_SYMBOL(init_kernel_text);
 
 int notrace core_kernel_text(unsigned long addr)
 {
+   pr_err("%lx %lx-%lx\n", addr, (unsigned long)_stext, (unsigned long)_etext);
 	if (addr >= (unsigned long)_stext &&
 	    addr < (unsigned long)_etext)
 		return 1;
@@ -81,6 +84,7 @@ int notrace core_kernel_text(unsigned long addr)
 		return 1;
 	return 0;
 }
+EXPORT_SYMBOL(core_kernel_text);
 
 /**
  * core_kernel_data - tell if addr points to kernel data
@@ -94,11 +98,13 @@ int notrace core_kernel_text(unsigned long addr)
  */
 int core_kernel_data(unsigned long addr)
 {
+   pr_err("%lx %lx-%lx\n", addr, (unsigned long)_sdata, (unsigned long)_edata);
 	if (addr >= (unsigned long)_sdata &&
 	    addr < (unsigned long)_edata)
 		return 1;
 	return 0;
 }
+EXPORT_SYMBOL(core_kernel_data);
 
 int __kernel_text_address(unsigned long addr)
 {
@@ -157,6 +163,7 @@ out:
 
 	return ret;
 }
+EXPORT_SYMBOL(kernel_text_address);
 
 /*
  * On some architectures (PPC64, IA64) function pointers

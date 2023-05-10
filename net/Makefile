@@ -6,6 +6,7 @@
 # Rewritten to use lists instead of if-statements.
 #
 
+subdir-ccflags-y += -DFUZZ_TRACE_WAIT -DFUZZ_REMOVE_DELAY_1
 obj-$(CONFIG_NET)		:= devres.o socket.o core/
 
 tmp-$(CONFIG_COMPAT) 		:= compat.o

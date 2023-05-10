@@ -22,7 +22,10 @@ struct rocker_desc_info {
 	size_t data_size;
 	size_t tlv_size;
 	struct rocker_desc *desc;
+	struct rocker_desc *desc_ctrl;
 	dma_addr_t mapaddr;
+	dma_addr_t buf_addr;
+	dma_addr_t buf_size;
 };
 
 struct rocker_dma_ring_info {
@@ -30,6 +33,7 @@ struct rocker_dma_ring_info {
 	u32 head;
 	u32 tail;
 	struct rocker_desc *desc; /* mapped */
+	struct rocker_desc *desc_ctrl;
 	dma_addr_t mapaddr;
 	struct rocker_desc_info *desc_info;
 	unsigned int type;

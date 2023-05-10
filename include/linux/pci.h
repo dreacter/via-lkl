@@ -1930,7 +1930,7 @@ enum pci_fixup_pass {
 #define DECLARE_PCI_FIXUP_SECTION(section, name, vendor, device, class,	\
 				  class_shift, hook)			\
 	static const struct pci_fixup __PASTE(__pci_fixup_##name,__LINE__) __used	\
-	__attribute__((__section__(#section), aligned((sizeof(void *)))))    \
+	__attribute__((no_sanitize("address"), __section__(#section), aligned((sizeof(void *)))))    \
 		= { vendor, device, class, class_shift, hook };
 #endif
 

@@ -4,6 +4,7 @@
 
 #include <linux/kasan.h>
 #include <linux/stackdepot.h>
+#include <asm/kasan_asan.h>
 
 #define KASAN_SHADOW_SCALE_SIZE (1UL << KASAN_SHADOW_SCALE_SHIFT)
 #define KASAN_SHADOW_MASK       (KASAN_SHADOW_SCALE_SIZE - 1)
@@ -139,15 +140,21 @@ struct kasan_alloc_meta *get_alloc_info(struct kmem_cache *cache,
 struct kasan_free_meta *get_free_info(struct kmem_cache *cache,
 					const void *object);
 
+// Note(feli): let asan handle this
+#if 0
 static inline const void *kasan_shadow_to_mem(const void *shadow_addr)
 {
 	return (void *)(((unsigned long)shadow_addr - KASAN_SHADOW_OFFSET)
 		<< KASAN_SHADOW_SCALE_SHIFT);
 }
+#endif
 
 static inline bool addr_has_shadow(const void *addr)
 {
+#if 0
 	return (addr >= kasan_shadow_to_mem((void *)KASAN_SHADOW_START));
+#endif
+	return __asan_AddrIsInShadow(__asan_MemToShadow((unsigned long)addr));
 }
 
 void kasan_poison_shadow(const void *address, size_t size, u8 value);
@@ -228,6 +235,7 @@ static inline const void *arch_kasan_set_tag(const void *addr, u8 tag)
  * Exported functions for interfaces called from assembly or from generated
  * code. Declarations here to avoid warning about missing declarations.
  */
+#if 0
 asmlinkage void kasan_unpoison_task_stack_below(const void *watermark);
 void __asan_register_globals(struct kasan_global *globals, size_t size);
 void __asan_unregister_globals(struct kasan_global *globals, size_t size);
@@ -295,5 +303,6 @@ void __hwasan_loadN_noabort(unsigned long addr, size_t size);
 void __hwasan_storeN_noabort(unsigned long addr, size_t size);
 
 void __hwasan_tag_memory(unsigned long addr, u8 tag, unsigned long size);
+#endif
 
 #endif

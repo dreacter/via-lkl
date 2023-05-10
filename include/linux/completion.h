@@ -100,6 +100,31 @@ static inline void reinit_completion(struct completion *x)
 	x->done = 0;
 }
 
+#if defined(MODULE) || defined(FUZZ_TRACE_WAIT)
+
+extern void wait_for_completion_fuzz(struct completion *);
+extern void wait_for_completion_io_fuzz(struct completion *);
+extern int wait_for_completion_interruptible_fuzz(struct completion *x);
+extern int wait_for_completion_killable_fuzz(struct completion *x);
+extern unsigned long wait_for_completion_timeout_fuzz(struct completion *x,
+						   unsigned long timeout);
+extern unsigned long wait_for_completion_io_timeout_fuzz(struct completion *x,
+						    unsigned long timeout);
+extern long wait_for_completion_interruptible_timeout_fuzz(
+	struct completion *x, unsigned long timeout);
+extern long wait_for_completion_killable_timeout_fuzz(
+	struct completion *x, unsigned long timeout);
+#define wait_for_completion wait_for_completion_fuzz
+#define wait_for_completion_io wait_for_completion_io_fuzz
+#define wait_for_completion_interruptible wait_for_completion_interruptible_fuzz
+#define wait_for_completion_killable wait_for_completion_killable_fuzz
+#define wait_for_completion_timeout wait_for_completion_timeout_fuzz
+#define wait_for_completion_io_timeout wait_for_completion_io_timeout_fuzz
+#define wait_for_completion_interruptible_timeout wait_for_completion_interruptible_timeout_fuzz
+#define wait_for_completion_killable_timeout wait_for_completion_killable_timeout_fuzz
+
+#else
+
 extern void wait_for_completion(struct completion *);
 extern void wait_for_completion_io(struct completion *);
 extern int wait_for_completion_interruptible(struct completion *x);
@@ -112,6 +137,9 @@ extern long wait_for_completion_interruptible_timeout(
 	struct completion *x, unsigned long timeout);
 extern long wait_for_completion_killable_timeout(
 	struct completion *x, unsigned long timeout);
+
+#endif
+
 extern bool try_wait_for_completion(struct completion *x);
 extern bool completion_done(struct completion *x);
 

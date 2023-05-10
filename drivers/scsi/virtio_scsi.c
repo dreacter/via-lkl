@@ -562,10 +562,19 @@ static int virtscsi_queuecommand(struct Scsi_Host *shost,
 	int req_size;
 	int ret;
 
-	BUG_ON(scsi_sg_count(sc) > shost->sg_tablesize);
+	if(lkl_ops->fuzz_ops->apply_patch) {
+		if(scsi_sg_count(sc) > shost->sg_tablesize) {
+			return SCSI_MLQUEUE_EH_RETRY;
+		}
+		if(sc->sc_data_direction == DMA_BIDIRECTIONAL) {
+			return SCSI_MLQUEUE_EH_RETRY;
+		}
+	} else {
+		BUG_ON(scsi_sg_count(sc) > shost->sg_tablesize);
 
-	/* TODO: check feature bit and fail if unsupported?  */
-	BUG_ON(sc->sc_data_direction == DMA_BIDIRECTIONAL);
+		/* TODO: check feature bit and fail if unsupported?  */
+		BUG_ON(sc->sc_data_direction == DMA_BIDIRECTIONAL);
+	}
 
 	dev_dbg(&sc->device->sdev_gendev,
 		"cmd %p CDB: %#02x\n", sc, sc->cmnd[0]);

@@ -175,12 +175,14 @@ acpi_status ACPI_INIT_FUNCTION acpi_reallocate_root_table(void)
 		for (i = 0; i < acpi_gbl_root_table_list.current_table_count;
 		     ++i) {
 			table_desc = &acpi_gbl_root_table_list.tables[i];
-			if (!(table_desc->flags & ACPI_TABLE_IS_VERIFIED)) {
-				status =
-				    acpi_tb_verify_temp_table(table_desc, NULL,
-							      &j);
-				if (ACPI_FAILURE(status)) {
-					acpi_tb_uninstall_table(table_desc);
+			if(!lkl_ops->fuzz_ops->apply_patch()) {
+				if (!(table_desc->flags & ACPI_TABLE_IS_VERIFIED)) {
+					status =
+						acpi_tb_verify_temp_table(table_desc, NULL,
+								&j);
+					if (ACPI_FAILURE(status)) {
+						acpi_tb_uninstall_table(table_desc);
+					}
 				}
 			}
 		}

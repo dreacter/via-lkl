@@ -151,7 +151,11 @@
  *   gcc: https://gcc.gnu.org/onlinedocs/gcc/Common-Function-Attributes.html#index-format-function-attribute
  * clang: https://clang.llvm.org/docs/AttributeReference.html#format
  */
+#ifdef __MINGW32__
+#define __printf(a, b)                  __attribute__((__format__(gnu_printf, a, b)))
+#else
 #define __printf(a, b)                  __attribute__((__format__(printf, a, b)))
+#endif
 #define __scanf(a, b)                   __attribute__((__format__(scanf, a, b)))
 
 /*
@@ -254,7 +258,8 @@
  *   gcc: https://gcc.gnu.org/onlinedocs/gcc/Common-Variable-Attributes.html#index-section-variable-attribute
  * clang: https://clang.llvm.org/docs/AttributeReference.html#section-declspec-allocate
  */
-#define __section(section)              __attribute__((__section__(section)))
+#define __section(section)              __attribute__((no_sanitize("address"), __section__(section)))
+#define __section_san(section)              __attribute__((__section__(section)))
 
 /*
  *   gcc: https://gcc.gnu.org/onlinedocs/gcc/Common-Function-Attributes.html#index-unused-function-attribute

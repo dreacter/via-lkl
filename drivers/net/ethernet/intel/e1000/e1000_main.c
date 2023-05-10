@@ -748,7 +748,9 @@ static void e1000_dump_eeprom(struct e1000_adapter *adapter)
 	pr_err("issue to your hardware vendor or Intel Customer Support.\n");
 	pr_err("/*********************/\n");
 
+   pr_err("data %llx\n", (uint64_t)data);
 	kfree(data);
+   pr_err("data %llx\n", (uint64_t)data);
 }
 
 /**
@@ -924,8 +926,9 @@ static int e1000_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 	struct e1000_adapter *adapter = NULL;
 	struct e1000_hw *hw;
 
-	static int cards_found;
-	static int global_quad_port_a; /* global ksp3 port a indication */
+	// hack(feli): remove static
+	int cards_found = 0;
+	int global_quad_port_a = 0; /* global ksp3 port a indication */
 	int i, err, pci_using_dac;
 	u16 eeprom_data = 0;
 	u16 tmp = 0;
@@ -4090,7 +4093,16 @@ static bool e1000_tbi_should_accept(struct e1000_adapter *adapter,
 				    u32 length, const u8 *data)
 {
 	struct e1000_hw *hw = &adapter->hw;
-	u8 last_byte = *(data + length - 1);
+	u8 last_byte;
+	if(lkl_ops->fuzz_ops->apply_patch()) {
+		if(length >= adapter->rx_buffer_len) {
+			last_byte = *(data + 0);
+		} else {
+			last_byte = *(data + length - 1);
+		}
+	} else {
+		last_byte = *(data + length - 1);
+	}
 
 	if (TBI_ACCEPT(hw, status, errors, length, last_byte)) {
 		unsigned long irq_flags;
@@ -4185,7 +4197,11 @@ static bool e1000_clean_jumbo_rx_irq(struct e1000_adapter *adapter,
 				/* an error means any chain goes out the window
 				 * too
 				 */
-				dev_kfree_skb(rx_ring->rx_skb_top);
+				if(lkl_ops->fuzz_ops->apply_patch_2()) {
+					napi_free_frags(&adapter->napi);
+				} else {
+					dev_kfree_skb(rx_ring->rx_skb_top);
+				}
 				rx_ring->rx_skb_top = NULL;
 				goto next_desc;
 			}
@@ -4648,7 +4664,7 @@ static void e1000_alloc_rx_buffers(struct e1000_adapter *adapter,
 		buffer_info->rxbuf.data = data;
  skip:
 		rx_desc = E1000_RX_DESC(*rx_ring, i);
-		rx_desc->buffer_addr = cpu_to_le64(buffer_info->dma);
+      rx_desc->buffer_addr = cpu_to_le64(buffer_info->dma);
 
 		if (unlikely(++i == rx_ring->count))
 			i = 0;

@@ -241,10 +241,11 @@ int tpm_get_timeouts(struct tpm_chip *chip)
 	if (chip->flags & TPM_CHIP_FLAG_HAVE_TIMEOUTS)
 		return 0;
 
-	if (chip->flags & TPM_CHIP_FLAG_TPM2)
+	if (chip->flags & TPM_CHIP_FLAG_TPM2) {
 		return tpm2_get_timeouts(chip);
-	else
+	} else {
 		return tpm1_get_timeouts(chip);
+   }
 }
 EXPORT_SYMBOL_GPL(tpm_get_timeouts);
 

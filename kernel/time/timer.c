@@ -1798,6 +1798,7 @@ static void process_timeout(struct timer_list *t)
 	wake_up_process(timeout->task);
 }
 
+//////////////////////////////////////////////////////////////////////////////
 /**
  * schedule_timeout - sleep until timeout
  * @timeout: timeout value in jiffies
@@ -1880,7 +1881,30 @@ signed long __sched schedule_timeout(signed long timeout)
 	return timeout < 0 ? 0 : timeout;
 }
 EXPORT_SYMBOL(schedule_timeout);
+signed long __sched schedule_timeout_fuzz(signed long timeout)
+{
+	if(lkl_ops->fuzz_ops->is_active() && lkl_ops->fuzz_ops->minimize_timeouts()) {
+		return 0;
+	}
+	return schedule_timeout(timeout);
+}
+EXPORT_SYMBOL(schedule_timeout_fuzz);
+signed long __sched schedule_timeout_fuzz_1(signed long timeout)
+{
+	if(lkl_ops->fuzz_ops->is_active() && lkl_ops->fuzz_ops->minimize_timeouts()) {
+		timeout = 1;
+	}
+	return schedule_timeout(timeout);
+}
+EXPORT_SYMBOL(schedule_timeout_fuzz_1);
+signed long __sched schedule_timeout_nofuzz(signed long timeout)
+{
+	return schedule_timeout(timeout);
+}
+EXPORT_SYMBOL(schedule_timeout_nofuzz);
 
+
+//////////////////////////////////////////////////////////////////////////////
 /*
  * We can use __set_current_state() here because schedule_timeout() calls
  * schedule() unconditionally.
@@ -1891,21 +1915,98 @@ signed long __sched schedule_timeout_interruptible(signed long timeout)
 	return schedule_timeout(timeout);
 }
 EXPORT_SYMBOL(schedule_timeout_interruptible);
+signed long __sched schedule_timeout_interruptible_fuzz(signed long timeout)
+{
+	if(lkl_ops->fuzz_ops->is_active() && lkl_ops->fuzz_ops->minimize_timeouts()) {
+		return 0;
+		//timeout = lkl_ops->fuzz_ops->minimize_timeouts();
+	}
+	__set_current_state(TASK_INTERRUPTIBLE);
+	return schedule_timeout(timeout);
+}
+EXPORT_SYMBOL(schedule_timeout_interruptible_fuzz);
+signed long __sched schedule_timeout_interruptible_fuzz_1(signed long timeout)
+{
+	if(lkl_ops->fuzz_ops->is_active() && lkl_ops->fuzz_ops->minimize_timeouts()) {
+      timeout = 1;
+	}
+	__set_current_state(TASK_INTERRUPTIBLE);
+	return schedule_timeout(timeout);
+}
+EXPORT_SYMBOL(schedule_timeout_interruptible_fuzz_1);
+signed long __sched schedule_timeout_interruptible_nofuzz(signed long timeout)
+{
+	__set_current_state(TASK_INTERRUPTIBLE);
+	return schedule_timeout(timeout);
+}
+EXPORT_SYMBOL(schedule_timeout_interruptible_nofuzz);
 
+
+//////////////////////////////////////////////////////////////////////////////
 signed long __sched schedule_timeout_killable(signed long timeout)
 {
 	__set_current_state(TASK_KILLABLE);
 	return schedule_timeout(timeout);
 }
 EXPORT_SYMBOL(schedule_timeout_killable);
+signed long __sched schedule_timeout_killable_fuzz(signed long timeout)
+{
+	if(lkl_ops->fuzz_ops->is_active() && lkl_ops->fuzz_ops->minimize_timeouts()) {
+		return 0;
+	}
+	__set_current_state(TASK_KILLABLE);
+	return schedule_timeout(timeout);
+}
+EXPORT_SYMBOL(schedule_timeout_killable_fuzz);
+signed long __sched schedule_timeout_killable_fuzz_1(signed long timeout)
+{
+	if(lkl_ops->fuzz_ops->is_active() && lkl_ops->fuzz_ops->minimize_timeouts()) {
+      timeout = 1;
+	}
+	__set_current_state(TASK_KILLABLE);
+	return schedule_timeout(timeout);
+}
+EXPORT_SYMBOL(schedule_timeout_killable_fuzz_1);
+signed long __sched schedule_timeout_killable_nofuzz(signed long timeout)
+{
+	__set_current_state(TASK_KILLABLE);
+	return schedule_timeout(timeout);
+}
+EXPORT_SYMBOL(schedule_timeout_killable_nofuzz);
 
+//////////////////////////////////////////////////////////////////////////////
 signed long __sched schedule_timeout_uninterruptible(signed long timeout)
 {
 	__set_current_state(TASK_UNINTERRUPTIBLE);
 	return schedule_timeout(timeout);
 }
 EXPORT_SYMBOL(schedule_timeout_uninterruptible);
+signed long __sched schedule_timeout_uninterruptible_fuzz(signed long timeout)
+{
+	if(lkl_ops->fuzz_ops->is_active() && lkl_ops->fuzz_ops->minimize_timeouts()) {
+		return 0;
+	}
+	__set_current_state(TASK_UNINTERRUPTIBLE);
+	return schedule_timeout(timeout);
+}
+EXPORT_SYMBOL(schedule_timeout_uninterruptible_fuzz);
+signed long __sched schedule_timeout_uninterruptible_fuzz_1(signed long timeout)
+{
+	if(lkl_ops->fuzz_ops->is_active() && lkl_ops->fuzz_ops->minimize_timeouts()) {
+		timeout = 1;
+	}
+	__set_current_state(TASK_UNINTERRUPTIBLE);
+	return schedule_timeout(timeout);
+}
+EXPORT_SYMBOL(schedule_timeout_uninterruptible_fuzz_1);
+signed long __sched schedule_timeout_uninterruptible_nofuzz(signed long timeout)
+{
+	__set_current_state(TASK_UNINTERRUPTIBLE);
+	return schedule_timeout(timeout);
+}
+EXPORT_SYMBOL(schedule_timeout_uninterruptible_nofuzz);
 
+//////////////////////////////////////////////////////////////////////////////
 /*
  * Like schedule_timeout_uninterruptible(), except this task will not contribute
  * to load average.
@@ -1916,6 +2017,30 @@ signed long __sched schedule_timeout_idle(signed long timeout)
 	return schedule_timeout(timeout);
 }
 EXPORT_SYMBOL(schedule_timeout_idle);
+signed long __sched schedule_timeout_idle_fuzz(signed long timeout)
+{
+	if(lkl_ops->fuzz_ops->is_active() && lkl_ops->fuzz_ops->minimize_timeouts()) {
+		return 0;
+	}
+	__set_current_state(TASK_IDLE);
+	return schedule_timeout(timeout);
+}
+EXPORT_SYMBOL(schedule_timeout_idle_fuzz);
+signed long __sched schedule_timeout_idle_fuzz_1(signed long timeout)
+{
+	if(lkl_ops->fuzz_ops->is_active() && lkl_ops->fuzz_ops->minimize_timeouts()) {
+		timeout = 1;
+	}
+	__set_current_state(TASK_IDLE);
+	return schedule_timeout(timeout);
+}
+EXPORT_SYMBOL(schedule_timeout_idle_fuzz_1);
+signed long __sched schedule_timeout_idle_nofuzz(signed long timeout)
+{
+	__set_current_state(TASK_IDLE);
+	return schedule_timeout(timeout);
+}
+EXPORT_SYMBOL(schedule_timeout_idle_nofuzz);
 
 #ifdef CONFIG_HOTPLUG_CPU
 static void migrate_timer_list(struct timer_base *new_base, struct hlist_head *head)
@@ -2013,6 +2138,7 @@ void __init init_timers(void)
 	open_softirq(TIMER_SOFTIRQ, run_timer_softirq);
 }
 
+//////////////////////////////////////////////////////////////////////////////
 /**
  * msleep - sleep safely even with waitqueue interruptions
  * @msecs: Time in milliseconds to sleep for
@@ -2026,7 +2152,30 @@ void msleep(unsigned int msecs)
 }
 
 EXPORT_SYMBOL(msleep);
+void msleep_fuzz(unsigned int msecs)
+{
+	unsigned long timeout;
+	timeout = msecs_to_jiffies(msecs) + 1;
+	if(lkl_ops->fuzz_ops->is_active() && lkl_ops->fuzz_ops->minimize_delays()) {
+		return;
+	}
+	while (timeout)
+		timeout = schedule_timeout_uninterruptible(timeout);
+}
+EXPORT_SYMBOL(msleep_fuzz);
+void msleep_fuzz_1(unsigned int msecs)
+{
+	unsigned long timeout;
+	timeout = msecs_to_jiffies(msecs) + 1;
+	if(lkl_ops->fuzz_ops->is_active() && lkl_ops->fuzz_ops->minimize_delays()) {
+      timeout = 1;
+	}
+	while (timeout)
+		timeout = schedule_timeout_uninterruptible(timeout);
+}
+EXPORT_SYMBOL(msleep_fuzz_1);
 
+//////////////////////////////////////////////////////////////////////////////
 /**
  * msleep_interruptible - sleep waiting for signals
  * @msecs: Time in milliseconds to sleep for
@@ -2039,9 +2188,33 @@ unsigned long msleep_interruptible(unsigned int msecs)
 		timeout = schedule_timeout_interruptible(timeout);
 	return jiffies_to_msecs(timeout);
 }
-
 EXPORT_SYMBOL(msleep_interruptible);
+unsigned long msleep_interruptible_fuzz(unsigned int msecs)
+{
+	unsigned long timeout;
+	timeout = msecs_to_jiffies(msecs) + 1;
+	if(lkl_ops->fuzz_ops->is_active() && lkl_ops->fuzz_ops->minimize_delays()) {
+		return 0;
+	}
+	while (timeout && !signal_pending(current))
+		timeout = schedule_timeout_interruptible(timeout);
+	return jiffies_to_msecs(timeout);
+}
+EXPORT_SYMBOL(msleep_interruptible_fuzz);
+unsigned long msleep_interruptible_fuzz_1(unsigned int msecs)
+{
+	unsigned long timeout;
+	timeout = msecs_to_jiffies(msecs) + 1;
+	if(lkl_ops->fuzz_ops->is_active() && lkl_ops->fuzz_ops->minimize_delays()) {
+		timeout = 1;
+	}
+	while (timeout && !signal_pending(current))
+		timeout = schedule_timeout_interruptible(timeout);
+	return jiffies_to_msecs(timeout);
+}
+EXPORT_SYMBOL(msleep_interruptible_fuzz_1);
 
+//////////////////////////////////////////////////////////////////////////////
 /**
  * usleep_range - Sleep for an approximate time
  * @min: Minimum time in usecs to sleep
@@ -2066,3 +2239,42 @@ void __sched usleep_range(unsigned long min, unsigned long max)
 	}
 }
 EXPORT_SYMBOL(usleep_range);
+void __sched usleep_range_fuzz(unsigned long min, unsigned long max)
+{
+	ktime_t exp;
+	u64 delta;
+	if(lkl_ops->fuzz_ops->is_active() && lkl_ops->fuzz_ops->minimize_delays()) {
+		return;
+		//min = lkl_ops->fuzz_ops->minimize_delays();
+		//max = lkl_ops->fuzz_ops->minimize_delays()+1;
+	}
+	exp = ktime_add_us(ktime_get(), min);
+	delta = (u64)(max - min) * NSEC_PER_USEC;
+
+	for (;;) {
+		__set_current_state(TASK_UNINTERRUPTIBLE);
+		/* Do not return before the requested sleep time has elapsed */
+		if (!schedule_hrtimeout_range(&exp, delta, HRTIMER_MODE_ABS))
+			break;
+	}
+}
+EXPORT_SYMBOL(usleep_range_fuzz);
+void __sched usleep_range_fuzz_1(unsigned long min, unsigned long max)
+{
+	ktime_t exp;
+	u64 delta;
+	if(lkl_ops->fuzz_ops->is_active() && lkl_ops->fuzz_ops->minimize_delays()) {
+		min = 1;
+		max = 2;
+	}
+	exp = ktime_add_us(ktime_get(), min);
+	delta = (u64)(max - min) * NSEC_PER_USEC;
+
+	for (;;) {
+		__set_current_state(TASK_UNINTERRUPTIBLE);
+		/* Do not return before the requested sleep time has elapsed */
+		if (!schedule_hrtimeout_range(&exp, delta, HRTIMER_MODE_ABS))
+			break;
+	}
+}
+EXPORT_SYMBOL(usleep_range_fuzz_1);

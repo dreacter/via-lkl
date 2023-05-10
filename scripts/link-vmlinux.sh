@@ -174,6 +174,10 @@ kallsyms()
 {
 	local kallsymopt;
 
+	if [ -n "${CONFIG_HAVE_UNDERSCORE_SYMBOL_PREFIX}" ]; then
+		kallsymopt="${kallsymopt} --symbol-prefix=_"
+	fi
+
 	if [ -n "${CONFIG_KALLSYMS_ALL}" ]; then
 		kallsymopt="${kallsymopt} --all-symbols"
 	fi
@@ -273,29 +277,31 @@ fi;
 # final build of init/
 ${MAKE} -f "${srctree}/scripts/Makefile.build" obj=init need-builtin=1
 
-#link vmlinux.o
-info LD vmlinux.o
-modpost_link vmlinux.o
-objtool_link vmlinux.o
+if [ -e scripts/mod/modpost ]; then
+   #link vmlinux.o
+   info LD vmlinux.o
+   modpost_link vmlinux.o
+   objtool_link vmlinux.o
 
-# modpost vmlinux.o to check for section mismatches
-${MAKE} -f "${srctree}/scripts/Makefile.modpost" MODPOST_VMLINUX=1
+   # modpost vmlinux.o to check for section mismatches
+   ${MAKE} -f "${srctree}/scripts/Makefile.modpost" MODPOST_VMLINUX=1
 
-info MODINFO modules.builtin.modinfo
-${OBJCOPY} -j .modinfo -O binary vmlinux.o modules.builtin.modinfo
-info GEN modules.builtin
-# The second line aids cases where multiple modules share the same object.
-tr '\0' '\n' < modules.builtin.modinfo | sed -n 's/^[[:alnum:]:_]*\.file=//p' |
-	tr ' ' '\n' | uniq | sed -e 's:^:kernel/:' -e 's/$/.ko/' > modules.builtin
+   info MODINFO modules.builtin.modinfo
+   ${OBJCOPY} -j .modinfo -O binary vmlinux.o modules.builtin.modinfo
+   info GEN modules.builtin
+   # The second line aids cases where multiple modules share the same object.
+   tr '\0' '\n' < modules.builtin.modinfo | sed -n 's/^[[:alnum:]:_]*\.file=//p' |
+   	tr ' ' '\n' | uniq | sed -e 's:^:kernel/:' -e 's/$/.ko/' > modules.builtin
 
-btf_vmlinux_bin_o=""
-if [ -n "${CONFIG_DEBUG_INFO_BTF}" ]; then
-	btf_vmlinux_bin_o=.btf.vmlinux.bin.o
-	if ! gen_btf .tmp_vmlinux.btf $btf_vmlinux_bin_o ; then
-		echo >&2 "Failed to generate BTF for vmlinux"
-		echo >&2 "Try to disable CONFIG_DEBUG_INFO_BTF"
-		exit 1
-	fi
+   btf_vmlinux_bin_o=""
+   if [ -n "${CONFIG_DEBUG_INFO_BTF}" ]; then
+   	btf_vmlinux_bin_o=.btf.vmlinux.bin.o
+   	if ! gen_btf .tmp_vmlinux.btf $btf_vmlinux_bin_o ; then
+   		echo >&2 "Failed to generate BTF for vmlinux"
+   		echo >&2 "Try to disable CONFIG_DEBUG_INFO_BTF"
+   		exit 1
+   	fi
+   fi
 fi
 
 kallsymso=""

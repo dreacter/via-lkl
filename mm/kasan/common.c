@@ -36,18 +36,25 @@
 
 #include <asm/cacheflush.h>
 #include <asm/tlbflush.h>
+#include <asm/host_ops.h>
 
 #include "kasan.h"
 #include "../slab.h"
 
+// Note(feli): __asan_get_allocation_context is exported by
+// llvm since stackdepot support is missing from lkl
+// it could probably be added
 depot_stack_handle_t kasan_save_stack(gfp_t flags)
 {
+   return (depot_stack_handle_t)__asan_get_allocation_context();
+#if 0
 	unsigned long entries[KASAN_STACK_DEPTH];
 	unsigned int nr_entries;
 
 	nr_entries = stack_trace_save(entries, ARRAY_SIZE(entries), 0);
 	nr_entries = filter_irq_stacks(entries, nr_entries);
 	return stack_depot_save(entries, nr_entries, flags);
+#endif
 }
 
 void kasan_set_track(struct kasan_track *track, gfp_t flags)
@@ -78,13 +85,15 @@ bool __kasan_check_write(const volatile void *p, unsigned int size)
 }
 EXPORT_SYMBOL(__kasan_check_write);
 
+// Note(feli): Asan handles this
+#if 0
 #undef memset
 void *memset(void *addr, int c, size_t len)
 {
 	if (!check_memory_region((unsigned long)addr, len, true, _RET_IP_))
 		return NULL;
 
-	return __memset(addr, c, len);
+	return lkl_ops->fuzz_ops->nosan_memset(addr, c, len);
 }
 
 #ifdef __HAVE_ARCH_MEMMOVE
@@ -106,8 +115,9 @@ void *memcpy(void *dest, const void *src, size_t len)
 	    !check_memory_region((unsigned long)dest, len, true, _RET_IP_))
 		return NULL;
 
-	return __memcpy(dest, src, len);
+	return lkl_ops->fuzz_ops->nosan_memcpy(dest, src, len);
 }
+#endif
 
 /*
  * Poisons the shadow memory for 'size' bytes starting from 'addr'.
@@ -127,7 +137,7 @@ void kasan_poison_shadow(const void *address, size_t size, u8 value)
 	shadow_start = kasan_mem_to_shadow(address);
 	shadow_end = kasan_mem_to_shadow(address + size);
 
-	__memset(shadow_start, value, shadow_end - shadow_start);
+	lkl_ops->fuzz_ops->nosan_memset(shadow_start, value, shadow_end - shadow_start);
 }
 
 void kasan_unpoison_shadow(const void *address, size_t size)
@@ -360,7 +370,7 @@ void * __must_check kasan_init_slab_obj(struct kmem_cache *cache,
 		return (void *)object;
 
 	alloc_info = get_alloc_info(cache, object);
-	__memset(alloc_info, 0, sizeof(*alloc_info));
+	lkl_ops->fuzz_ops->nosan_memset(alloc_info, 0, sizeof(*alloc_info));
 
 	if (IS_ENABLED(CONFIG_KASAN_SW_TAGS))
 		object = set_tag(object,
@@ -541,7 +551,8 @@ void kasan_kfree_large(void *ptr, unsigned long ip)
 	/* The object will be poisoned by page_alloc. */
 }
 
-#ifndef CONFIG_KASAN_VMALLOC
+// Todo(feli): activate this
+#if defined(CONFIG_MMU) && !defined(CONFIG_KASAN_VMALLOC)
 int kasan_module_alloc(void *addr, size_t size)
 {
 	void *ret;
@@ -563,7 +574,7 @@ int kasan_module_alloc(void *addr, size_t size)
 			__builtin_return_address(0));
 
 	if (ret) {
-		__memset(ret, KASAN_SHADOW_INIT, shadow_size);
+		lkl_ops->fuzz_ops->nosan_memset(ret, KASAN_SHADOW_INIT, shadow_size);
 		find_vm_area(addr)->flags |= VM_KASAN;
 		kmemleak_ignore(ret);
 		return 0;

@@ -5918,8 +5918,8 @@ static enum gro_result dev_gro_receive(struct napi_struct *napi, struct sk_buff 
 	struct sk_buff *pp = NULL;
 	enum gro_result ret;
 	int same_flow;
-	int grow;
-
+	int64_t grow;
+	int grow0;
 	if (netif_elide_gro(skb->dev))
 		goto normal;
 
@@ -6000,9 +6000,22 @@ static enum gro_result dev_gro_receive(struct napi_struct *napi, struct sk_buff 
 	ret = GRO_HELD;
 
 pull:
-	grow = skb_gro_offset(skb) - skb_headlen(skb);
-	if (grow > 0)
+	grow = (int64_t)skb_gro_offset(skb) - (int64_t) skb_headlen(skb);
+	grow0 = skb_gro_offset(skb) - skb_headlen(skb);
+	pr_err("grow %llx/%x, skb_gro_offset %llx, skb_headlen %llx, skb_len %llx, skb_dlen %llx\n",
+			(uint64_t)grow,
+			grow0,
+			(uint64_t)skb_gro_offset(skb),
+			(uint64_t)skb_headlen(skb),
+			(uint64_t)skb->len,
+			(uint64_t)skb->data_len
+			);
+	if(grow != grow0) {
+		BUG();
+	}
+	if (grow > 0) {
 		gro_pull_from_frag0(skb, grow);
+	}
 ok:
 	if (napi->gro_hash[hash].count) {
 		if (!test_bit(hash, &napi->gro_bitmask))
@@ -9348,7 +9361,10 @@ err_out:
  */
 static int dev_new_index(struct net *net)
 {
-	int ifindex = net->ifindex;
+	// Note(feli): need to start searching from 0 in order
+	// to be able to re-assign the same if indices
+	// otherwise we will quickly run out of bounds
+	int ifindex = 0; //net->ifindex;
 
 	for (;;) {
 		if (++ifindex <= 0)

@@ -445,10 +445,19 @@ extern bool queue_work_on(int cpu, struct workqueue_struct *wq,
 			struct work_struct *work);
 extern bool queue_work_node(int node, struct workqueue_struct *wq,
 			    struct work_struct *work);
+#if defined(MODULE) || defined(FUZZ_REMOVE_DELAY)
+extern bool queue_delayed_work_on_fuzz(int cpu, struct workqueue_struct *wq,
+			struct delayed_work *work, unsigned long delay);
+extern bool mod_delayed_work_on_fuzz(int cpu, struct workqueue_struct *wq,
+			struct delayed_work *dwork, unsigned long delay);
+#define queue_delayed_work_on queue_delayed_work_on_fuzz
+#define mod_delayed_work_on mod_delayed_work_on_fuzz
+#else
 extern bool queue_delayed_work_on(int cpu, struct workqueue_struct *wq,
 			struct delayed_work *work, unsigned long delay);
 extern bool mod_delayed_work_on(int cpu, struct workqueue_struct *wq,
 			struct delayed_work *dwork, unsigned long delay);
+#endif
 extern bool queue_rcu_work(struct workqueue_struct *wq, struct rcu_work *rwork);
 
 extern void flush_workqueue(struct workqueue_struct *wq);

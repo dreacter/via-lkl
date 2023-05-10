@@ -129,6 +129,16 @@ void __finish_swait(struct swait_queue_head *q, struct swait_queue *wait)
 	if (!list_empty(&wait->task_list))
 		list_del_init(&wait->task_list);
 }
+void __finish_swait_fuzz(struct swait_queue_head *q, struct swait_queue *wait)
+{
+	lkl_ops->fuzz_ops->del_waiter(q);
+	__set_current_state(TASK_RUNNING);
+	if (!list_empty(&wait->task_list)) {
+		list_del_init(&wait->task_list);
+      lkl_ops->fuzz_ops->del_waiter(wait);
+   }
+}
+
 
 void finish_swait(struct swait_queue_head *q, struct swait_queue *wait)
 {
@@ -143,3 +153,18 @@ void finish_swait(struct swait_queue_head *q, struct swait_queue *wait)
 	}
 }
 EXPORT_SYMBOL(finish_swait);
+void finish_swait_fuzz(struct swait_queue_head *q, struct swait_queue *wait)
+{
+	unsigned long flags;
+
+	__set_current_state(TASK_RUNNING);
+
+	if (!list_empty_careful(&wait->task_list)) {
+		raw_spin_lock_irqsave(&q->lock, flags);
+		list_del_init(&wait->task_list);
+		raw_spin_unlock_irqrestore(&q->lock, flags);
+      lkl_ops->fuzz_ops->del_waiter(wait);
+	}
+}
+EXPORT_SYMBOL(finish_swait_fuzz);
+

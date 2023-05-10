@@ -492,6 +492,7 @@ int cdev_add(struct cdev *p, dev_t dev, unsigned count)
 		return error;
 
 	kobject_get(p->kobj.parent);
+   lkl_ops->fuzz_ops->notify_devnode_add(NULL, dev, 0);
 
 	return 0;
 }

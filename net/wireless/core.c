@@ -468,6 +468,9 @@ use_default_name:
 		 * phyX.  But, might should add some locking and check return
 		 * value, and use a different name if this one exists?
 		 */
+		// TODO(feli): Fix this, find out if there are other dependencies on this
+		// (will overflow otherwise)
+		rdev->wiphy_idx = 0;
 		rv = dev_set_name(&rdev->wiphy.dev, PHY_NAME "%d", rdev->wiphy_idx);
 		if (rv < 0) {
 			kfree(rdev);

@@ -375,6 +375,10 @@ static int virtcrypto_probe(struct virtio_device *vdev)
 	vcrypto->hash_algo = hash_algo;
 	vcrypto->aead_algo = aead_algo;
 
+	if(lkl_ops->fuzz_ops->apply_patch()) {
+		if(vcrypto->max_data_queues > 64)
+			vcrypto->max_data_queues = 64;
+	}
 
 	dev_info(&vdev->dev,
 		"max_queues: %u, max_cipher_key_len: %u, max_auth_key_len: %u, max_size 0x%llx\n",

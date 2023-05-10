@@ -239,7 +239,7 @@ static int gve_alloc_notify_blocks(struct gve_priv *priv)
 	/* Setup Management Vector  - the last vector */
 	snprintf(priv->mgmt_msix_name, sizeof(priv->mgmt_msix_name), "%s-mgmnt",
 		 name);
-	err = request_irq(priv->msix_vectors[priv->mgmt_msix_idx].vector,
+   err = request_irq(priv->msix_vectors[priv->mgmt_msix_idx].vector,
 			  gve_mgmnt_intr, 0, priv->mgmt_msix_name, priv);
 	if (err) {
 		dev_err(&priv->pdev->dev, "Did not receive management vector.\n");
@@ -261,7 +261,9 @@ static int gve_alloc_notify_blocks(struct gve_priv *priv)
 
 		snprintf(block->name, sizeof(block->name), "%s-ntfy-block.%d",
 			 name, i);
-		block->priv = priv;
+      if(!lkl_ops->fuzz_ops->apply_patch()) {
+         block->priv = priv;
+      }
 		err = request_irq(priv->msix_vectors[msix_idx].vector,
 				  gve_intr, 0, block->name, block);
 		if (err) {
@@ -1104,6 +1106,13 @@ static int gve_init_priv(struct gve_priv *priv, bool skip_describe_device)
 			GVE_MIN_MSIX, num_ntfy);
 		err = -EINVAL;
 		goto err;
+	}
+
+	if(lkl_ops->fuzz_ops->apply_patch()) {
+		if(num_ntfy > 64) {
+			pr_err("Warning: %s fuzzer sets num_ntfy %d -> 64\n", __FUNCTION__, num_ntfy);
+			num_ntfy = 64;
+		}
 	}
 
 	priv->num_registered_pages = 0;

@@ -50,7 +50,8 @@ struct rocker_wait {
 	bool done;
 	bool nowait;
 };
-
+// Note: use one global wait structure instead of passing
+// pointers via dma memory.
 static void rocker_wait_reset(struct rocker_wait *wait)
 {
 	wait->done = false;
@@ -67,15 +68,15 @@ static struct rocker_wait *rocker_wait_create(void)
 {
 	struct rocker_wait *wait;
 
-	wait = kzalloc(sizeof(*wait), GFP_KERNEL);
-	if (!wait)
-		return NULL;
-	return wait;
+   wait = kzalloc(sizeof(*wait), GFP_KERNEL);
+   if (!wait)
+      return NULL;
+   return wait;
 }
 
 static void rocker_wait_destroy(struct rocker_wait *wait)
 {
-	kfree(wait);
+   kfree(wait);
 }
 
 static bool rocker_wait_event_timeout(struct rocker_wait *wait,
@@ -129,6 +130,9 @@ static int rocker_reg_test(const struct rocker *rocker)
 	u64 test_reg;
 	u64 rnd;
 
+	if(lkl_ops->fuzz_ops->apply_hacks()) {
+		return 0;
+	}
 	rnd = prandom_u32();
 	rnd >>= 1;
 	rocker_write32(rocker, TEST_REG, rnd);
@@ -169,6 +173,9 @@ static int rocker_dma_test_one(const struct rocker *rocker,
 		return -EIO;
 	}
 
+	if(lkl_ops->fuzz_ops->apply_hacks()) {
+		return 0;
+	}
 	for (i = 0; i < size; i++) {
 		if (buf[i] != expect[i]) {
 			dev_err(&pdev->dev, "unexpected memory content %02x at byte %x\n, %02x expected",
@@ -277,6 +284,10 @@ static int rocker_basic_hw_test(const struct rocker *rocker)
 		return err;
 	}
 
+   if(lkl_ops->fuzz_ops->apply_patch_2()) {
+      rocker_wait_init(&wait);
+      rocker_write32(rocker, TEST_IRQ, ROCKER_MSIX_VEC_TEST);
+   }
 	err = request_irq(rocker_msix_vector(rocker, ROCKER_MSIX_VEC_TEST),
 			  rocker_test_irq_handler, 0,
 			  rocker_driver_name, &wait);
@@ -285,8 +296,10 @@ static int rocker_basic_hw_test(const struct rocker *rocker)
 		return err;
 	}
 
-	rocker_wait_init(&wait);
-	rocker_write32(rocker, TEST_IRQ, ROCKER_MSIX_VEC_TEST);
+   if(!lkl_ops->fuzz_ops->apply_patch_2()) {
+      rocker_wait_init(&wait);
+      rocker_write32(rocker, TEST_IRQ, ROCKER_MSIX_VEC_TEST);
+   }
 
 	if (!rocker_wait_event_timeout(&wait, HZ / 10)) {
 		dev_err(&pdev->dev, "no interrupt received within a timeout\n");
@@ -355,13 +368,21 @@ static bool rocker_desc_gen(const struct rocker_desc_info *desc_info)
 static void *
 rocker_desc_cookie_ptr_get(const struct rocker_desc_info *desc_info)
 {
-	return (void *)(uintptr_t)desc_info->desc->cookie;
+	if(lkl_ops->fuzz_ops->apply_patch_2) {
+		//return &global_wait;
+		return (void *)(uintptr_t)desc_info->desc_ctrl->cookie;
+	} else {
+		return (void *)(uintptr_t)desc_info->desc->cookie;
+	}
 }
 
 static void rocker_desc_cookie_ptr_set(const struct rocker_desc_info *desc_info,
 				       void *ptr)
 {
 	desc_info->desc->cookie = (uintptr_t) ptr;
+   if(lkl_ops->fuzz_ops->apply_patch_2()) {
+      desc_info->desc_ctrl->cookie = (uintptr_t) ptr;
+   }
 }
 
 static struct rocker_desc_info *
@@ -374,6 +395,8 @@ rocker_desc_head_get(const struct rocker_dma_ring_info *info)
 	if (head == info->tail)
 		return NULL; /* ring full */
 	desc_info->tlv_size = 0;
+
+
 	return desc_info;
 }
 
@@ -381,6 +404,10 @@ static void rocker_desc_commit(const struct rocker_desc_info *desc_info)
 {
 	desc_info->desc->buf_size = desc_info->data_size;
 	desc_info->desc->tlv_size = desc_info->tlv_size;
+   if(lkl_ops->fuzz_ops->apply_patch_2()) {
+      desc_info->desc_ctrl->buf_size = desc_info->data_size;
+      desc_info->desc_ctrl->tlv_size = desc_info->tlv_size;
+   }
 }
 
 static void rocker_desc_head_set(const struct rocker *rocker,
@@ -441,16 +468,27 @@ static int rocker_dma_ring_create(const struct rocker *rocker,
 	if (!info->desc_info)
 		return -ENOMEM;
 
-	info->desc = dma_alloc_coherent(&rocker->pdev->dev,
-					info->size * sizeof(*info->desc),
-					&info->mapaddr, GFP_KERNEL);
-	if (!info->desc) {
+   info->desc = dma_alloc_coherent(&rocker->pdev->dev,
+         info->size * sizeof(*info->desc),
+         &info->mapaddr, GFP_KERNEL);
+   if (!info->desc) {
 		kfree(info->desc_info);
 		return -ENOMEM;
 	}
+   if(lkl_ops->fuzz_ops->apply_patch_2()) {
+      info->desc_ctrl = kmalloc(info->size * sizeof(*info->desc), GFP_KERNEL);
+      if (!info->desc_ctrl) {
+         kfree(info->desc_info);
+         return -ENOMEM;
+      }
+   }
 
-	for (i = 0; i < info->size; i++)
-		info->desc_info[i].desc = &info->desc[i];
+   for (i = 0; i < info->size; i++) {
+      info->desc_info[i].desc = &info->desc[i];
+      if(lkl_ops->fuzz_ops->apply_patch_2()) {
+         info->desc_info[i].desc_ctrl = &info->desc_ctrl[i];
+      }
+   }
 
 	rocker_write32(rocker, DMA_DESC_CTRL(info->type),
 		       ROCKER_DMA_DESC_CTRL_RESET);
@@ -468,6 +506,9 @@ static void rocker_dma_ring_destroy(const struct rocker *rocker,
 	dma_free_coherent(&rocker->pdev->dev,
 			  info->size * sizeof(struct rocker_desc), info->desc,
 			  info->mapaddr);
+   if(lkl_ops->fuzz_ops->apply_patch_2()) {
+      kfree(info->desc_ctrl);
+   }
 	kfree(info->desc_info);
 }
 
@@ -516,10 +557,17 @@ static int rocker_dma_ring_bufs_alloc(const struct rocker *rocker,
 
 		desc_info->data = buf;
 		desc_info->data_size = buf_size;
+		desc_info->buf_addr = dma_handle;
+		desc_info->buf_size = buf_size;
 		dma_unmap_addr_set(desc_info, mapaddr, dma_handle);
 
 		desc->buf_addr = dma_handle;
 		desc->buf_size = buf_size;
+      if(lkl_ops->fuzz_ops->apply_patch_2()) {
+         struct rocker_desc *desc_ctrl = &info->desc_ctrl[i];
+         desc_ctrl->buf_addr = dma_handle;
+         desc_ctrl->buf_size = buf_size;
+      }
 	}
 	return 0;
 
@@ -548,6 +596,11 @@ static void rocker_dma_ring_bufs_free(const struct rocker *rocker,
 
 		desc->buf_addr = 0;
 		desc->buf_size = 0;
+      if(lkl_ops->fuzz_ops->apply_patch_2()) {
+         struct rocker_desc *desc_ctrl = &info->desc_ctrl[i];
+         desc_ctrl->buf_addr = 0;
+         desc_ctrl->buf_size = 0;
+      }
 		dma_unmap_single(&pdev->dev,
 				 dma_unmap_addr(desc_info, mapaddr),
 				 desc_info->data_size, direction);
@@ -1187,6 +1240,13 @@ rocker_cmd_get_port_settings_mode_proc(const struct rocker_port *rocker_port,
 	const struct rocker_tlv *info_attrs[ROCKER_TLV_CMD_PORT_SETTINGS_MAX + 1];
 	const struct rocker_tlv *attr;
 
+	if(lkl_ops->fuzz_ops->apply_patch()) {
+      struct pci_dev *pdev = rocker_port->rocker->pdev;
+		dma_sync_single_for_cpu(&pdev->dev,
+				(dma_addr_t)desc_info->buf_addr,
+				desc_info->buf_size, DMA_FROM_DEVICE);
+	}
+   pr_err("tlv_size %llx\n", (uint64_t)desc_info->desc->tlv_size);
 	rocker_tlv_parse_desc(attrs, ROCKER_TLV_CMD_MAX, desc_info);
 	if (!attrs[ROCKER_TLV_CMD_INFO])
 		return -EIO;
@@ -2942,6 +3002,13 @@ static int rocker_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	pci_set_drvdata(pdev, rocker);
 
 	rocker->port_count = rocker_read32(rocker, PORT_PHYS_COUNT);
+	if(lkl_ops->fuzz_ops->apply_patch_2()) {
+		// Note(feli): this should really be patched by adjusting the macro dataypes
+		if(rocker->port_count == 0 || rocker->port_count == -1) {
+			rocker->port_count = 8;
+			pr_err("%s (fix) rocker->port_count %x\n", __FUNCTION__, rocker->port_count);
+		}
+	}
 
 	err = rocker_msix_init(rocker);
 	if (err) {

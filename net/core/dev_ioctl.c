@@ -449,6 +449,22 @@ int dev_ioctl(struct net *net, unsigned int cmd, struct ifreq *ifr, bool *need_c
 			*colon = ':';
 		return ret;
 
+	case SIOCETHCUSTOM:
+		// used for evaluation against agamotto
+		// agamotto uses default debian userspace
+		// which invokes ethtool on new net devices
+		dev_load(net, ifr->ifr_name);
+		rtnl_lock();
+		dev_ifsioc(net, ifr, SIOCGIFINDEX);
+		dev_ethtool_confall(net, ifr);
+		dev_ifsioc(net, ifr, SIOCSIFHWADDR);
+		dev_ifsioc(net, ifr, SIOCSIFMTU);
+		ret = 0;
+		rtnl_unlock();
+		if (colon)
+			*colon = ':';
+		return ret;
+
 	/*
 	 *	These ioctl calls:
 	 *	- require superuser power.

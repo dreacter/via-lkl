@@ -32,6 +32,9 @@ static int all_versions = 0;
 static int external_module = 0;
 /* Only warn about unresolved symbols */
 static int warn_unresolved = 0;
+/* completely ignore unresolved symbols */
+// Note(feli): they will be provided by the fuzzing harness
+static int ignore_unresolved = 1;
 /* How a symbol is exported */
 static int sec_mismatch_count = 0;
 static int sec_mismatch_fatal = 0;
@@ -1457,6 +1460,8 @@ static void report_sec_mismatch(const char *modname,
 	const char *to, *to_p;
 	char *prl_from;
 	char *prl_to;
+   // Note(feli): supress warnings
+   return;
 
 	sec_mismatch_count++;
 
@@ -2184,11 +2189,14 @@ static int check_exports(struct module *mod)
 		exp = find_symbol(s->name);
 		if (!exp || exp->module == mod) {
 			if (have_vmlinux && !s->weak) {
-				modpost_log(warn_unresolved ? LOG_WARN : LOG_ERROR,
-					    "\"%s\" [%s.ko] undefined!\n",
-					    s->name, mod->name);
-				if (!warn_unresolved)
-					err = 1;
+				if(ignore_unresolved == 0) {
+					modpost_log(warn_unresolved ? LOG_WARN : LOG_ERROR,
+							"\"%s\" [%s.ko] undefined!\n",
+							s->name, mod->name);
+					if (!warn_unresolved)
+						err = 1;
+				}
+
 			}
 			continue;
 		}
@@ -2254,7 +2262,7 @@ static void add_header(struct buffer *b, struct module *mod)
 	buf_printf(b, "MODULE_INFO(name, KBUILD_MODNAME);\n");
 	buf_printf(b, "\n");
 	buf_printf(b, "__visible struct module __this_module\n");
-	buf_printf(b, "__section(\".gnu.linkonce.this_module\") = {\n");
+	buf_printf(b, "__attribute__((no_sanitize(\"address\"), section(\".gnu.linkonce.this_module\"))) = {\n");
 	buf_printf(b, "\t.name = KBUILD_MODNAME,\n");
 	if (mod->has_init)
 		buf_printf(b, "\t.init = init_module,\n");

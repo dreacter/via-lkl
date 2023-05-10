@@ -2,14 +2,14 @@
 /*
  * include/linux/cpu.h - generic cpu definition
  *
- * This is mainly for topological representation. We define the 
- * basic 'struct cpu' here, which can be embedded in per-arch 
+ * This is mainly for topological representation. We define the
+ * basic 'struct cpu' here, which can be embedded in per-arch
  * definitions of processors.
  *
  * Basic handling of the devices is done in drivers/base/cpu.c
  *
  * CPUs are exported via sysfs in the devices/system/cpu
- * directory. 
+ * directory.
  */
 #ifndef _LINUX_CPU_H_
 #define _LINUX_CPU_H_
@@ -187,6 +187,7 @@ int cpu_report_state(int cpu);
 int cpu_check_up_prepare(int cpu);
 void cpu_set_state_online(int cpu);
 void play_idle_precise(u64 duration_ns, u64 latency_ns);
+void cpu_yield_to_irqs(void);
 
 static inline void play_idle(unsigned long duration_us)
 {

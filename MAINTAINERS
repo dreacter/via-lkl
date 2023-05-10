@@ -10146,6 +10146,14 @@ F:	Documentation/litmus-tests/
 F:	Documentation/memory-barriers.txt
 F:	tools/memory-model/
 
+LINUX KERNEL LIBRARY
+M:	Octavian Purdila <octavian.purdila@intel.com>
+M:	Hajime Tazaki <thehajime@gmail.com>
+L:	linux-kernel-library@freelists.org
+S:	Maintained
+F:	arch/lkl/
+F:	tools/lkl/
+
 LIS3LV02D ACCELEROMETER DRIVER
 M:	Eric Piel <eric.piel@tremplin-utc.net>
 S:	Maintained

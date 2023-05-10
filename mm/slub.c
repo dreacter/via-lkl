@@ -594,7 +594,7 @@ static void set_track(struct kmem_cache *s, void *object,
 		p->pid = current->pid;
 		p->when = jiffies;
 	} else {
-		memset(p, 0, sizeof(struct track));
+		lkl_ops->fuzz_ops->nosan_memset(p, 0, sizeof(struct track));
 	}
 }
 
@@ -750,22 +750,22 @@ static void init_object(struct kmem_cache *s, void *object, u8 val)
 	u8 *p = object;
 
 	if (s->flags & SLAB_RED_ZONE)
-		memset(p - s->red_left_pad, val, s->red_left_pad);
+		lkl_ops->fuzz_ops->nosan_memset(p - s->red_left_pad, val, s->red_left_pad);
 
 	if (s->flags & __OBJECT_POISON) {
-		memset(p, POISON_FREE, s->object_size - 1);
+		lkl_ops->fuzz_ops->nosan_memset(p, POISON_FREE, s->object_size - 1);
 		p[s->object_size - 1] = POISON_END;
 	}
 
 	if (s->flags & SLAB_RED_ZONE)
-		memset(p + s->object_size, val, s->inuse - s->object_size);
+		lkl_ops->fuzz_ops->nosan_memset(p + s->object_size, val, s->inuse - s->object_size);
 }
 
 static void restore_bytes(struct kmem_cache *s, char *message, u8 data,
 						void *from, void *to)
 {
 	slab_fix(s, "Restoring 0x%p-0x%p=0x%x\n", from, to - 1, data);
-	memset(from, data, to - from);
+	lkl_ops->fuzz_ops->nosan_memset(from, data, to - from);
 }
 
 static int check_bytes_and_report(struct kmem_cache *s, struct page *page,
@@ -1118,7 +1118,7 @@ void setup_page_debug(struct kmem_cache *s, struct page *page, void *addr)
 		return;
 
 	metadata_access_enable();
-	memset(addr, POISON_INUSE, page_size(page));
+	lkl_ops->fuzz_ops->nosan_memset(addr, POISON_INUSE, page_size(page));
 	metadata_access_disable();
 }
 
@@ -1566,10 +1566,10 @@ static inline bool slab_free_freelist_hook(struct kmem_cache *s,
 			 * Clear the object and the metadata, but don't touch
 			 * the redzone.
 			 */
-			memset(object, 0, s->object_size);
+			lkl_ops->fuzz_ops->nosan_memset(object, 0, s->object_size);
 			rsize = (s->flags & SLAB_RED_ZONE) ? s->red_left_pad
 							   : 0;
-			memset((char *)object + s->inuse, 0,
+			lkl_ops->fuzz_ops->nosan_memset((char *)object + s->inuse, 0,
 			       s->size - s->inuse - rsize);
 
 		}
@@ -2791,7 +2791,7 @@ static __always_inline void maybe_wipe_obj_freeptr(struct kmem_cache *s,
 						   void *obj)
 {
 	if (unlikely(slab_want_init_on_free(s)) && obj)
-		memset((void *)((char *)obj + s->offset), 0, sizeof(void *));
+		lkl_ops->fuzz_ops->nosan_memset((void *)((char *)obj + s->offset), 0, sizeof(void *));
 }
 
 /*
@@ -2886,7 +2886,7 @@ redo:
 	maybe_wipe_obj_freeptr(s, object);
 
 	if (unlikely(slab_want_init_on_alloc(gfpflags, s)) && object)
-		memset(object, 0, s->object_size);
+		lkl_ops->fuzz_ops->nosan_memset(object, 0, s->object_size);
 
 	slab_post_alloc_hook(s, objcg, gfpflags, 1, &object);
 
@@ -3329,7 +3329,7 @@ int kmem_cache_alloc_bulk(struct kmem_cache *s, gfp_t flags, size_t size,
 		int j;
 
 		for (j = 0; j < i; j++)
-			memset(p[j], 0, s->object_size);
+			lkl_ops->fuzz_ops->nosan_memset(p[j], 0, s->object_size);
 	}
 
 	/* memcg and kmem_cache debug support */
@@ -4333,7 +4333,7 @@ static struct kmem_cache * __init bootstrap(struct kmem_cache *static_cache)
 	struct kmem_cache *s = kmem_cache_zalloc(kmem_cache, GFP_NOWAIT);
 	struct kmem_cache_node *n;
 
-	memcpy(s, static_cache, kmem_cache->object_size);
+	lkl_ops->fuzz_ops->nosan_memcpy(s, static_cache, kmem_cache->object_size);
 
 	/*
 	 * This runs very early, and only the boot processor is supposed to be
@@ -4627,7 +4627,7 @@ static int alloc_loc_track(struct loc_track *t, unsigned long max, gfp_t flags)
 		return 0;
 
 	if (t->count) {
-		memcpy(l, t->loc, sizeof(struct location) * t->count);
+		lkl_ops->fuzz_ops->nosan_memcpy(l, t->loc, sizeof(struct location) * t->count);
 		free_loc_track(t);
 	}
 	t->max = max;

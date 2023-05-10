@@ -957,6 +957,15 @@ static inline void nvme_ring_cq_doorbell(struct nvme_queue *nvmeq)
 		writel(head, nvmeq->q_db + nvmeq->dev->db_stride);
 }
 
+//static inline struct blk_mq_tags *nvme_queue_tagset(struct nvme_queue *nvmeq)
+//{
+//	if (!nvmeq->qid && nvmeq->dev && nvmeq->dev->admin_tagset.tags!=NULL)
+//		return nvmeq->dev->admin_tagset.tags[0];
+//   if(nvmeq->dev && nvmeq->dev->tagset.tags)
+//      return nvmeq->dev->tagset.tags[nvmeq->qid - 1];
+//   return NULL;
+//}
+
 static inline struct blk_mq_tags *nvme_queue_tagset(struct nvme_queue *nvmeq)
 {
 	if (!nvmeq->qid)
@@ -2138,7 +2147,7 @@ static int nvme_setup_io_queues(struct nvme_dev *dev)
 
 	if (nr_io_queues == 0)
 		return 0;
-	
+
 	clear_bit(NVMEQ_ENABLED, &adminq->flags);
 
 	if (dev->cmb_use_sqes) {

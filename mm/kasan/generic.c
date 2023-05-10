@@ -36,10 +36,13 @@
 #include <linux/types.h>
 #include <linux/vmalloc.h>
 #include <linux/bug.h>
+#include <asm/host_ops.h>
 
 #include "kasan.h"
 #include "../slab.h"
 
+// Note(feli): let asan handle these
+#if 0
 /*
  * All functions below always inlined so compiler could
  * perform better optimizations in each of __asan_loadX/__assn_storeX
@@ -144,9 +147,11 @@ static __always_inline bool memory_is_poisoned_n(unsigned long addr,
 	}
 	return false;
 }
+#endif
 
 static __always_inline bool memory_is_poisoned(unsigned long addr, size_t size)
 {
+#if 0
 	if (__builtin_constant_p(size)) {
 		switch (size) {
 		case 1:
@@ -163,6 +168,8 @@ static __always_inline bool memory_is_poisoned(unsigned long addr, size_t size)
 	}
 
 	return memory_is_poisoned_n(addr, size);
+#endif
+	return __asan_AddressIsPoisoned(addr);
 }
 
 static __always_inline bool check_memory_region_inline(unsigned long addr,
@@ -175,10 +182,12 @@ static __always_inline bool check_memory_region_inline(unsigned long addr,
 	if (unlikely(addr + size < addr))
 		return !kasan_report(addr, size, write, ret_ip);
 
+#if 0
 	if (unlikely((void *)addr <
 		kasan_shadow_to_mem((void *)KASAN_SHADOW_START))) {
 		return !kasan_report(addr, size, write, ret_ip);
 	}
+#endif
 
 	if (likely(!memory_is_poisoned(addr, size)))
 		return true;
@@ -203,6 +212,7 @@ void kasan_cache_shutdown(struct kmem_cache *cache)
 		quarantine_remove_cache(cache);
 }
 
+#if 0
 static void register_global(struct kasan_global *global)
 {
 	size_t aligned_size = round_up(global->size, KASAN_SHADOW_SCALE_SIZE);
@@ -314,7 +324,7 @@ EXPORT_SYMBOL(__asan_allocas_unpoison);
 #define DEFINE_ASAN_SET_SHADOW(byte) \
 	void __asan_set_shadow_##byte(const void *addr, size_t size)	\
 	{								\
-		__memset((void *)addr, 0x##byte, size);			\
+		lkl_ops->fuzz_ops->nosan_memset((void *)addr, 0x##byte, size);			\
 	}								\
 	EXPORT_SYMBOL(__asan_set_shadow_##byte)
 
@@ -324,6 +334,7 @@ DEFINE_ASAN_SET_SHADOW(f2);
 DEFINE_ASAN_SET_SHADOW(f3);
 DEFINE_ASAN_SET_SHADOW(f5);
 DEFINE_ASAN_SET_SHADOW(f8);
+#endif
 
 void kasan_record_aux_stack(void *addr)
 {

@@ -2027,6 +2027,16 @@ static int gem_check_invariants(struct gem *gp)
 	gp->tx_fifo_sz = readl(gp->regs + TXDMA_FSZ) * 64;
 	gp->rx_fifo_sz = readl(gp->regs + RXDMA_FSZ) * 64;
 
+	if(lkl_ops->fuzz_ops->apply_hacks()) {
+		if (pdev->device == PCI_DEVICE_ID_SUN_GEM) {
+			gp->tx_fifo_sz = 9 * 1024;
+			gp->rx_fifo_sz = 20 * 1024;
+		} else {
+			gp->tx_fifo_sz = 2 * 1024;
+			gp->rx_fifo_sz = 2 * 1024;
+		}
+	}
+
 	if (pdev->vendor == PCI_VENDOR_ID_SUN) {
 		if (pdev->device == PCI_DEVICE_ID_SUN_GEM) {
 			if (gp->tx_fifo_sz != (9 * 1024) ||

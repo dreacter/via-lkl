@@ -202,9 +202,14 @@ static inline int is_syscall_trace_event(struct trace_event_call *tp_event)
 }
 #endif
 
+#ifndef __SYSCALL_DEFINE_ARCH
+#define __SYSCALL_DEFINE_ARCH(x, sname, ...)
+#endif
+
 #ifndef SYSCALL_DEFINE0
 #define SYSCALL_DEFINE0(sname)					\
 	SYSCALL_METADATA(_##sname, 0);				\
+	__SYSCALL_DEFINE_ARCH(0, _##sname);			\
 	asmlinkage long sys_##sname(void);			\
 	ALLOW_ERROR_INJECTION(sys_##sname, ERRNO);		\
 	asmlinkage long sys_##sname(void)
@@ -221,6 +226,7 @@ static inline int is_syscall_trace_event(struct trace_event_call *tp_event)
 
 #define SYSCALL_DEFINEx(x, sname, ...)				\
 	SYSCALL_METADATA(sname, x, __VA_ARGS__)			\
+	__SYSCALL_DEFINE_ARCH(x, sname, __VA_ARGS__)		\
 	__SYSCALL_DEFINEx(x, sname, __VA_ARGS__)
 
 #define __PROTECT(...) asmlinkage_protect(__VA_ARGS__)
@@ -1228,6 +1234,13 @@ asmlinkage long sys_old_mmap(struct mmap_arg_struct __user *arg);
  * not implemented -- see kernel/sys_ni.c
  */
 asmlinkage long sys_ni_syscall(void);
+
+// LKL FUZZING STUFF //////////////////////////////////////////////////////////
+asmlinkage long sys_init_loaded_module(void* mod_handle);
+asmlinkage long sys_uninit_loaded_module(void* mod_handle);
+asmlinkage long sys_fuzz_trigger_irq(int);
+asmlinkage long sys_fuzz_configure_dev(unsigned int type, void __user *uconf);
+
 
 #endif /* CONFIG_ARCH_HAS_SYSCALL_WRAPPER */
 

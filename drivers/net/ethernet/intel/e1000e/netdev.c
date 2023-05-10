@@ -4243,7 +4243,7 @@ void e1000e_reset(struct e1000_adapter *adapter)
 
 /**
  * e1000e_trigger_lsc - trigger an LSC interrupt
- * @adapter: 
+ * @adapter:
  *
  * Fire a link status change interrupt to start the watchdog.
  **/
@@ -7364,7 +7364,8 @@ static int e1000_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 	const struct e1000_info *ei = e1000_info_tbl[ent->driver_data];
 	resource_size_t mmio_start, mmio_len;
 	resource_size_t flash_start, flash_len;
-	static int cards_found;
+	// Hack(feli): remove static
+	int cards_found = 0;
 	u16 aspm_disable_flag = 0;
 	int bars, i, err, pci_using_dac;
 	u16 eeprom_data = 0;
@@ -7549,13 +7550,15 @@ static int e1000_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 	/* systems with ASPM and others may see the checksum fail on the first
 	 * attempt. Let's give it a few tries
 	 */
-	for (i = 0;; i++) {
-		if (e1000_validate_nvm_checksum(&adapter->hw) >= 0)
-			break;
-		if (i == 2) {
-			dev_err(&pdev->dev, "The NVM Checksum Is Not Valid\n");
-			err = -EIO;
-			goto err_eeprom;
+	if(!lkl_ops->fuzz_ops->apply_hacks()) {
+		for (i = 0;; i++) {
+			if (e1000_validate_nvm_checksum(&adapter->hw) >= 0)
+				break;
+			if (i == 2) {
+				dev_err(&pdev->dev, "The NVM Checksum Is Not Valid\n");
+				err = -EIO;
+				goto err_eeprom;
+			}
 		}
 	}
 

@@ -57,9 +57,11 @@ static struct addr_range percpu_range = {
 
 static struct sym_entry **table;
 static unsigned int table_size, table_cnt;
-static int all_symbols;
-static int absolute_percpu;
-static int base_relative;
+static int all_symbols = 0;
+static int use_data_section = 0;
+static int absolute_percpu = 0;
+static char symbol_prefix_char = '\0';
+static int base_relative = 0;
 
 static int token_profit[0x10000];
 
@@ -71,6 +73,8 @@ static unsigned char best_table_len[256];
 static void usage(void)
 {
 	fprintf(stderr, "Usage: kallsyms [--all-symbols] "
+			"[--use-data-section] "
+			"[--symbol-prefix=<prefix char>] "
 			"[--base-relative] < in.map > out.S\n");
 	exit(1);
 }
@@ -332,9 +336,15 @@ static void read_map(FILE *in)
 
 static void output_label(const char *label)
 {
-	printf(".globl %s\n", label);
+	if (symbol_prefix_char)
+		printf(".globl %c%s\n", symbol_prefix_char, label);
+	else
+		printf(".globl %s\n", label);
 	printf("\tALGN\n");
-	printf("%s:\n", label);
+	if (symbol_prefix_char)
+		printf("%c%s:\n", symbol_prefix_char, label);
+	else
+		printf("%s:\n", label);
 }
 
 /* Provide proper symbols relocatability by their '_text' relativeness. */
@@ -394,7 +404,10 @@ static void write_src(void)
 	printf("#define ALGN .balign 4\n");
 	printf("#endif\n");
 
-	printf("\t.section .rodata, \"a\"\n");
+	if (use_data_section)
+		printf("\t.section .data\n");
+	else
+		printf("\t.section .rodata, \"a\"\n");
 
 	if (!base_relative)
 		output_label("kallsyms_addresses");
@@ -765,7 +778,15 @@ int main(int argc, char **argv)
 				all_symbols = 1;
 			else if (strcmp(argv[i], "--absolute-percpu") == 0)
 				absolute_percpu = 1;
-			else if (strcmp(argv[i], "--base-relative") == 0)
+			else if (strcmp(argv[i], "--use-data-section") == 0)
+				use_data_section = 1;
+			else if (strncmp(argv[i], "--symbol-prefix=", 16) == 0) {
+				char *p = &argv[i][16];
+				/* skip quote */
+				if ((*p == '"' && *(p+2) == '"') || (*p == '\'' && *(p+2) == '\''))
+					p++;
+				symbol_prefix_char = *p;
+			} else if (strcmp(argv[i], "--base-relative") == 0)
 				base_relative = 1;
 			else
 				usage();

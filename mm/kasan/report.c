@@ -110,11 +110,14 @@ static void end_report(unsigned long *flags)
 
 static void print_stack(depot_stack_handle_t stack)
 {
+#if 0
 	unsigned long *entries;
 	unsigned int nr_entries;
 
 	nr_entries = stack_depot_fetch(stack, &entries);
 	stack_trace_print(entries, nr_entries, 0);
+#endif
+	__asan_print_allocation_context(stack);
 }
 
 static void print_track(struct kasan_track *track, const char *prefix)
@@ -405,22 +408,24 @@ static void print_address_description(void *addr, u8 tag)
 	print_address_stack_frame(addr);
 }
 
-static bool row_is_guilty(const void *row, const void *guilty)
-{
-	return (row <= guilty) && (guilty < row + SHADOW_BYTES_PER_ROW);
-}
+//static bool row_is_guilty(const void *row, const void *guilty)
+//{
+//	return (row <= guilty) && (guilty < row + SHADOW_BYTES_PER_ROW);
+//}
 
-static int shadow_pointer_offset(const void *row, const void *shadow)
-{
-	/* The length of ">ff00ff00ff00ff00: " is
-	 *    3 + (BITS_PER_LONG/8)*2 chars.
-	 */
-	return 3 + (BITS_PER_LONG/8)*2 + (shadow - row)*2 +
-		(shadow - row) / SHADOW_BYTES_PER_BLOCK + 1;
-}
+//static int shadow_pointer_offset(const void *row, const void *shadow)
+//{
+//	/* The length of ">ff00ff00ff00ff00: " is
+//	 *    3 + (BITS_PER_LONG/8)*2 chars.
+//	 */
+//	return 3 + (BITS_PER_LONG/8)*2 + (shadow - row)*2 +
+//		(shadow - row) / SHADOW_BYTES_PER_BLOCK + 1;
+//}
 
+// Note(feli): asan already does that
 static void print_shadow_for_address(const void *addr)
 {
+#if 0
 	int i;
 	const void *shadow = kasan_mem_to_shadow(addr);
 	const void *shadow_row;
@@ -455,12 +460,16 @@ static void print_shadow_for_address(const void *addr)
 
 		shadow_row += SHADOW_BYTES_PER_ROW;
 	}
+#endif
 }
 
 static bool report_enabled(void)
 {
+// Note(feli): for some reason this is 1, when called from asan
+#if 0
 	if (current->kasan_depth)
 		return false;
+#endif
 	if (test_bit(KASAN_BIT_MULTI_SHOT, &kasan_flags))
 		return true;
 	return !test_and_set_bit(KASAN_BIT_REPORTED, &kasan_flags);
@@ -552,6 +561,7 @@ static void __kasan_report(unsigned long addr, size_t size, bool is_write,
 	end_report(&flags);
 }
 
+// Note(feli): will be called from asan
 bool kasan_report(unsigned long addr, size_t size, bool is_write,
 			unsigned long ip)
 {
@@ -567,6 +577,7 @@ bool kasan_report(unsigned long addr, size_t size, bool is_write,
 
 	return ret;
 }
+EXPORT_SYMBOL(kasan_report);
 
 #ifdef CONFIG_KASAN_INLINE
 /*

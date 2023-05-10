@@ -123,7 +123,7 @@ retry:
 	local_irq_restore(flags);
 }
 #else
-asmlinkage __visible void dump_stack(void)
+asmlinkage __attribute__((weak)) void dump_stack(void)
 {
 	__dump_stack();
 }

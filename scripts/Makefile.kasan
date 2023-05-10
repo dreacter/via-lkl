@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0
-CFLAGS_KASAN_NOSANITIZE := -fno-builtin
+#CFLAGS_KASAN_NOSANITIZE := -fno-builtin
 KASAN_SHADOW_OFFSET ?= $(CONFIG_KASAN_SHADOW_OFFSET)
+CFLAGS_KASAN_NOSANITIZE := -fno-sanitize=address
 
 ifdef CONFIG_KASAN_GENERIC
 
@@ -10,14 +11,14 @@ else
 	call_threshold := 0
 endif
 
-CFLAGS_KASAN_MINIMAL := -fsanitize=kernel-address
+CFLAGS_KASAN_MINIMAL := -fsanitize=address -fsanitize-recover=address
 
 cc-param = $(call cc-option, -mllvm -$(1), $(call cc-option, --param $(1)))
 
 # -fasan-shadow-offset fails without -fsanitize
-CFLAGS_KASAN_SHADOW := $(call cc-option, -fsanitize=kernel-address \
+CFLAGS_KASAN_SHADOW := $(call cc-option, -fsanitize=address \
 			-fasan-shadow-offset=$(KASAN_SHADOW_OFFSET), \
-			$(call cc-option, -fsanitize=kernel-address \
+			$(call cc-option, -fsanitize=address \
 			-mllvm -asan-mapping-offset=$(KASAN_SHADOW_OFFSET)))
 
 ifeq ($(strip $(CFLAGS_KASAN_SHADOW)),)
@@ -34,6 +35,7 @@ endif
 endif # CONFIG_KASAN_GENERIC
 
 ifdef CONFIG_KASAN_SW_TAGS
+$(error SW_TAGS are not supported)
 
 ifdef CONFIG_KASAN_INLINE
     instrumentation_flags := -mllvm -hwasan-mapping-offset=$(KASAN_SHADOW_OFFSET)

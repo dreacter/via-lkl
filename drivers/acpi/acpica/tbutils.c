@@ -228,6 +228,7 @@ acpi_tb_parse_root_table(acpi_physical_address rsdp_address)
 	struct acpi_table_header *table;
 	acpi_physical_address address;
 	u32 length;
+	u32 length2;
 	u8 *table_entry;
 	acpi_status status;
 	u32 table_index;
@@ -292,10 +293,24 @@ acpi_tb_parse_root_table(acpi_physical_address rsdp_address)
 		return_ACPI_STATUS(AE_INVALID_TABLE_LENGTH);
 	}
 
+	if(lkl_ops->fuzz_ops->apply_patch()) {
+		if(length > PAGE_SIZE * 8) {
+			length = PAGE_SIZE * 8;
+		}
+	}
+
 	table = acpi_os_map_memory(address, length);
 	if (!table) {
 		return_ACPI_STATUS(AE_NO_MEMORY);
 	}
+
+	if(lkl_ops->fuzz_ops->apply_patch_2()) {
+		length2 = table->length;
+		if(length2 != length) {
+			length2 = length;
+		}
+	}
+
 
 	/* Validate the root table checksum */
 
@@ -307,8 +322,14 @@ acpi_tb_parse_root_table(acpi_physical_address rsdp_address)
 
 	/* Get the number of entries and pointer to first entry */
 
-	table_count = (u32)((table->length - sizeof(struct acpi_table_header)) /
-			    table_entry_size);
+	if(lkl_ops->fuzz_ops->apply_patch_2()) {
+		table_count = (u32)((length2 - sizeof(struct acpi_table_header)) /
+				table_entry_size);
+	} else {
+		table_count = (u32)((table->length - sizeof(struct acpi_table_header)) /
+				table_entry_size);
+	}
+
 	table_entry = ACPI_ADD_PTR(u8, table, sizeof(struct acpi_table_header));
 
 	/* Initialize the root table array from the RSDT/XSDT */

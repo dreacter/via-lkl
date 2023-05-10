@@ -12,6 +12,7 @@
 #define _LINUX_PREFETCH_H
 
 #include <linux/types.h>
+#include <linux/irq.h>
 #include <asm/processor.h>
 #include <asm/cache.h>
 

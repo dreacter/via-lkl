@@ -122,6 +122,7 @@ static inline void add_uuid(char *str, uuid_le uuid)
  * Also verify that the final entry in the table is all zeros.
  * Ignore both checks if build host differ from target host and size differs.
  **/
+#if 0
 static void device_id_check(const char *modname, const char *device_id,
 			    unsigned long size, unsigned long id_size,
 			    void *symval)
@@ -151,6 +152,7 @@ static void device_id_check(const char *modname, const char *device_id,
 		}
 	}
 }
+#endif
 
 /* USB is special because the bcdDevice can be matched against a numeric range */
 /* Looks like "usb:vNpNdNdcNdscNdpNicNiscNipNinN" */
@@ -332,7 +334,7 @@ static void do_usb_table(void *symval, unsigned long size,
 	unsigned int i;
 	const unsigned long id_size = SIZE_usb_device_id;
 
-	device_id_check(mod->name, "usb", size, id_size, symval);
+	//device_id_check(mod->name, "usb", size, id_size, symval);
 
 	/* Leave last one: it's the terminator. */
 	size -= id_size;
@@ -375,7 +377,7 @@ static void do_of_table(void *symval, unsigned long size,
 	unsigned int i;
 	const unsigned long id_size = SIZE_of_device_id;
 
-	device_id_check(mod->name, "of", size, id_size, symval);
+	//device_id_check(mod->name, "of", size, id_size, symval);
 
 	/* Leave last one: it's the terminator. */
 	size -= id_size;
@@ -576,7 +578,7 @@ static void do_pnp_device_entry(void *symval, unsigned long size,
 	const unsigned int count = (size / id_size)-1;
 	unsigned int i;
 
-	device_id_check(mod->name, "pnp", size, id_size, symval);
+	//device_id_check(mod->name, "pnp", size, id_size, symval);
 
 	for (i = 0; i < count; i++) {
 		DEF_FIELD_ADDR(symval + i*id_size, pnp_device_id, id);
@@ -602,7 +604,7 @@ static void do_pnp_card_entries(void *symval, unsigned long size,
 	const unsigned int count = (size / id_size)-1;
 	unsigned int i;
 
-	device_id_check(mod->name, "pnp", size, id_size, symval);
+	//device_id_check(mod->name, "pnp", size, id_size, symval);
 
 	for (i = 0; i < count; i++) {
 		unsigned int j;
@@ -1386,7 +1388,7 @@ static void do_table(void *symval, unsigned long size,
 	unsigned int i;
 	char alias[ALIAS_SIZE];
 
-	device_id_check(mod->name, device_id, size, id_size, symval);
+	//device_id_check(mod->name, device_id, size, id_size, symval);
 	/* Leave last one: it's the terminator. */
 	size -= id_size;
 

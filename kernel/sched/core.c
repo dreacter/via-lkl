@@ -6292,6 +6292,18 @@ long __sched io_schedule_timeout(long timeout)
 	return ret;
 }
 EXPORT_SYMBOL(io_schedule_timeout);
+long __sched io_schedule_timeout_nofuzz(long timeout)
+{
+	int token;
+	long ret;
+
+	token = io_schedule_prepare();
+	ret = schedule_timeout_nofuzz(timeout);
+	io_schedule_finish(token);
+
+	return ret;
+}
+EXPORT_SYMBOL(io_schedule_timeout_nofuzz);
 
 void __sched io_schedule(void)
 {

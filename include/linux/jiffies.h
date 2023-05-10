@@ -101,6 +101,19 @@ static inline u64 get_jiffies_64(void)
  * good compiler would generate better code (and a really good compiler
  * wouldn't care). Gcc is currently neither.
  */
+#if defined(MODULE) || defined(FUZZ_REMOVE_DELAY)
+
+extern int time_after_fuzz(unsigned long a, unsigned long b);
+extern int time_before_fuzz(unsigned long a, unsigned long b);
+extern int time_after_eq_fuzz(unsigned long a, unsigned long b);
+extern int time_before_eq_fuzz(unsigned long a, unsigned long b);
+#define time_after time_after_fuzz
+#define time_before time_before_fuzz
+#define time_before_eq	time_before_eq_fuzz
+#define time_after_eq	time_after_eq_fuzz
+
+#else
+
 #define time_after(a,b)		\
 	(typecheck(unsigned long, a) && \
 	 typecheck(unsigned long, b) && \
@@ -112,6 +125,7 @@ static inline u64 get_jiffies_64(void)
 	 typecheck(unsigned long, b) && \
 	 ((long)((a) - (b)) >= 0))
 #define time_before_eq(a,b)	time_after_eq(b,a)
+#endif
 
 /*
  * Calculate whether a is in the range of [b, c].
@@ -130,6 +144,19 @@ static inline u64 get_jiffies_64(void)
 /* Same as above, but does so with platform independent 64bit types.
  * These must be used when utilizing jiffies_64 (i.e. return value of
  * get_jiffies_64() */
+#if defined(MODULE) || defined(FUZZ_REMOVE_DELAY)
+
+extern int time_after64_fuzz(__u64 a, __u64 b);
+extern int time_before64_fuzz(__u64 a, __u64 b);
+extern int time_after_eq64_fuzz(__u64 a, __u64 b);
+extern int time_before_eq64_fuzz(__u64 a, __u64 b);
+#define time_after64 time_after64_fuzz
+#define time_before64 time_before64_fuzz
+#define time_before_eq64 time_before_eq64_fuzz
+#define time_after_eq64	time_after_eq64_fuzz
+
+#else /* !MODULE */
+
 #define time_after64(a,b)	\
 	(typecheck(__u64, a) &&	\
 	 typecheck(__u64, b) && \
@@ -141,6 +168,7 @@ static inline u64 get_jiffies_64(void)
 	 typecheck(__u64, b) && \
 	 ((__s64)((a) - (b)) >= 0))
 #define time_before_eq64(a,b)	time_after_eq64(b,a)
+#endif
 
 #define time_in_range64(a, b, c) \
 	(time_after_eq64(a, b) && \

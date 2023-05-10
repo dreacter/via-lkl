@@ -221,6 +221,36 @@ extern long schedule_timeout_interruptible(long timeout);
 extern long schedule_timeout_killable(long timeout);
 extern long schedule_timeout_uninterruptible(long timeout);
 extern long schedule_timeout_idle(long timeout);
+
+extern long schedule_timeout_nofuzz(long timeout);
+extern long schedule_timeout_interruptible_nofuzz(long timeout);
+extern long schedule_timeout_killable_nofuzz(long timeout);
+extern long schedule_timeout_uninterruptible_nofuzz(long timeout);
+extern long schedule_timeout_idle_nofuzz(long timeout);
+#if defined(MODULE) || defined(FUZZ_REMOVE_DELAY)
+extern long schedule_timeout_fuzz(long timeout);
+extern long schedule_timeout_interruptible_fuzz(long timeout);
+extern long schedule_timeout_killable_fuzz(long timeout);
+extern long schedule_timeout_uninterruptible_fuzz(long timeout);
+extern long schedule_timeout_idle_fuzz(long timeout);
+#define schedule_timeout schedule_timeout_fuzz
+#define schedule_timeout_interruptible schedule_timeout_interruptible_fuzz
+#define schedule_timeout_killable schedule_timeout_killable_fuzz
+#define schedule_timeout_uninterruptible schedule_timeout_uninterruptible_fuzz
+#define schedule_timeout_idle schedule_timeout_idle_fuzz
+#elif defined(FUZZ_REMOVE_DELAY_1)
+extern long schedule_timeout_fuzz_1(long timeout);
+extern long schedule_timeout_interruptible_fuzz_1(long timeout);
+extern long schedule_timeout_killable_fuzz_1(long timeout);
+extern long schedule_timeout_uninterruptible_fuzz_1(long timeout);
+extern long schedule_timeout_idle_fuzz_1(long timeout);
+#define schedule_timeout schedule_timeout_fuzz_1
+#define schedule_timeout_interruptible schedule_timeout_interruptible_fuzz_1
+#define schedule_timeout_killable schedule_timeout_killable_fuzz_1
+#define schedule_timeout_uninterruptible schedule_timeout_uninterruptible_fuzz_1
+#define schedule_timeout_idle schedule_timeout_idle_fuzz_1
+#endif
+
 asmlinkage void schedule(void);
 extern void schedule_preempt_disabled(void);
 asmlinkage void preempt_schedule_irq(void);
@@ -228,6 +258,7 @@ asmlinkage void preempt_schedule_irq(void);
 extern int __must_check io_schedule_prepare(void);
 extern void io_schedule_finish(int token);
 extern long io_schedule_timeout(long timeout);
+extern long io_schedule_timeout_nofuzz(long timeout);
 extern void io_schedule(void);
 
 /**

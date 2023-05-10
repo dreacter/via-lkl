@@ -283,6 +283,7 @@ acpi_map_lookup_virt(void __iomem *virt, acpi_size size)
 
 static void __iomem *acpi_map(acpi_physical_address pg_off, unsigned long pg_sz)
 {
+#if 0
 	unsigned long pfn;
 
 	pfn = pg_off >> PAGE_SHIFT;
@@ -292,19 +293,24 @@ static void __iomem *acpi_map(acpi_physical_address pg_off, unsigned long pg_sz)
 		return (void __iomem __force *)kmap(pfn_to_page(pfn));
 	} else
 		return acpi_os_ioremap(pg_off, pg_sz);
+#else
+	// Note(feli): use our stuff
+	return __acpi_map_table(pg_off, pg_sz);
+
+#endif
 }
 
-static void acpi_unmap(acpi_physical_address pg_off, void __iomem *vaddr)
-{
-	unsigned long pfn;
-
-	pfn = pg_off >> PAGE_SHIFT;
-	if (should_use_kmap(pfn))
-		kunmap(pfn_to_page(pfn));
-	else
-		iounmap(vaddr);
-}
-
+//static void acpi_unmap(acpi_physical_address pg_off, void __iomem *vaddr)
+//{
+//	unsigned long pfn;
+//
+//	pfn = pg_off >> PAGE_SHIFT;
+//	if (should_use_kmap(pfn))
+//		kunmap(pfn_to_page(pfn));
+//	else
+//		iounmap(vaddr);
+//}
+//
 /**
  * acpi_os_map_iomem - Get a virtual address for a given physical address range.
  * @phys: Start of the physical address range to map.
@@ -358,7 +364,8 @@ void __iomem __ref
 	}
 
 	INIT_LIST_HEAD(&map->list);
-	map->virt = (void __iomem __force *)((unsigned long)virt & PAGE_MASK);
+	// note(feli): slight changes to mappings
+	map->virt = (void __iomem __force *)((unsigned long)virt); //(void __iomem __force *)((unsigned long)virt & PAGE_MASK);
 	map->phys = pg_off;
 	map->size = pg_sz;
 	map->track.refcount = 1;
@@ -367,7 +374,7 @@ void __iomem __ref
 
 out:
 	mutex_unlock(&acpi_ioremap_lock);
-	return map->virt + (phys - map->phys);
+	return map->virt;// + (phys - map->phys);
 }
 EXPORT_SYMBOL_GPL(acpi_os_map_iomem);
 
@@ -383,8 +390,13 @@ static void acpi_os_map_remove(struct work_struct *work)
 						struct acpi_ioremap,
 						track.rwork);
 
+#if 0
 	acpi_unmap(map->phys, map->virt);
 	kfree(map);
+#else
+	// Note(feli): use our stuff
+	return __acpi_unmap_table(map->virt, map->size);
+#endif
 }
 
 /* Must be called with mutex_lock(&acpi_ioremap_lock) */
